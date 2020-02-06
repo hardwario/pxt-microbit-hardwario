@@ -6,7 +6,7 @@ namespace HARDWARIO {
         basic.pause(100);
 
         let andBuf: number = 0x0608;
-        console.logValue("andBuf", 0);
+        console.log("hodnota" + andBuf);
         let controledBuf: Buffer = pins.createBufferFromArray([0x00, 0x80]);
 
         let buf: Buffer = pins.createBufferFromArray([0x01, 0xca, 0x10]);
