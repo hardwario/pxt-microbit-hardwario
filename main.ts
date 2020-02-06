@@ -3,8 +3,8 @@ namespace HARDWARIO {
     export function getLight() {
 
         let buf: Buffer = pins.createBuffer(3);
-        buf.setNumber(NumberFormat.UInt8BE, 0, 0x01c815);
-        console.log("buffer " + buf.getNumber(NumberFormat.UInt8BE, 0));
+        buf.setNumber(NumberFormat.UInt32BE, 0, 0x01c810);
+        console.log("buffer " + buf.getNumber(NumberFormat.UInt32BE, 0));
         pins.i2cWriteBuffer(68, buf); //Init
 
         basic.pause(100);
