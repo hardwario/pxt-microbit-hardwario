@@ -4,7 +4,7 @@ namespace HARDWARIO {
 
         let buf: Buffer;
         buf.setNumber(NumberFormat.UInt8LE, 0, 0x01c810);
-        console.log("buffer" + buf);
+        console.log("buffer" + buf.getNumber(NumberFormat.UInt8LE, 0));
         pins.i2cWriteBuffer(68, buf); //Init
 
         basic.pause(100);
