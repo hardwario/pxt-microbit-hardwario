@@ -1,7 +1,7 @@
 namespace HARDWARIO {
     //%block
-    export function getCO2() {
-        
+    export function getLight() {
+
         pins.i2cWriteBuffer(68, pins.createBufferFromArray([0x01, 0xc8, 0x10])); //Init
         basic.pause(50);
 
@@ -21,11 +21,38 @@ namespace HARDWARIO {
             pins.i2cWriteBuffer(68, buf);
             let lux_data = pins.i2cReadBuffer(68, 2);
             console.log("Změřeno");
+            basic.showLeds(`
+                . . . . .
+                . . . . #
+                . . . # .
+                # . # . .
+                . # . . .
+                `)
         }
-        else
-        {
+        else {
             console.log("Nezměřeno");
+            basic.showLeds(`
+                # . . . #
+                . # . # .
+                . . # . .
+                . # . # .
+                # . . . #
+                `)
         }
+    }
+    //%block
+    export function getCO2() {
+
+    }
+
+    //%block
+    export function getTemperature() {
+
+    }
+
+    //%block
+    export function getHumidity() {
+
     }
 }
 
