@@ -21,9 +21,23 @@ namespace HARDWARIO {
             pins.i2cWriteBuffer(68, buf);
             let lux_data = pins.i2cReadBuffer(68, 2);
             console.log("Změřeno");
+            basic.showLeds(`
+                . . . . .
+                . . . . #
+                . . . # .
+                # . # . .
+                . # . . .
+                `)
         }
         else {
             console.log("Nezměřeno");
+            basic.showLeds(`
+                # . . . #
+                . # . # .
+                . . # . .
+                . # . # .
+                # . . . #
+                `)
         }
     }
     //%block
