@@ -12,12 +12,11 @@ namespace HARDWARIO {
     let mpl3115a2_initialized: boolean = false;
 
     //%block
-    export function getLight() : number {
-        
+    export function getLight(): number {
+
         let buf: Buffer;
 
-        if(!opt3001_initialized)
-        {
+        if (!opt3001_initialized) {
             buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
             pins.i2cWriteBuffer(68, buf); //Init
             basic.pause(50);
@@ -60,7 +59,7 @@ namespace HARDWARIO {
     }
 
     //%block="getTemperature"
-    export function getTemperature() : number {
+    export function getTemperature(): number {
 
         let buf: Buffer = pins.createBufferFromArray([0x01, 0x80]);
         pins.i2cWriteBuffer(72, buf);
@@ -77,8 +76,12 @@ namespace HARDWARIO {
         basic.pause(2000);
     }
 
+    /**
+    * Reads the number of times the rain gauge has filled and emptied
+	    * Returns inches of rain. 
+    */
     //%block="getHumidity"
-    export function getHumidity() : number {
+    export function getHumidity(): number {
 
         let buf: Buffer = pins.createBufferFromArray([0xfe]);
         pins.i2cWriteBuffer(64, buf);
@@ -96,15 +99,14 @@ namespace HARDWARIO {
         serial.writeNumber(hum_sht_per);
 
         serial.writeLine(" ");
-        return(hum_sht_per);
+        return (hum_sht_per);
         basic.pause(2000);
     }
 
     //%block="getAltitude"
-    export function getAltitude() : number {
+    export function getAltitude(): number {
         let buf: Buffer;
-        if(!mpl3115a2_initialized)
-        {
+        if (!mpl3115a2_initialized) {
             buf = pins.createBufferFromArray([0x26, 0x04]);
             pins.i2cWriteBuffer(96, buf);
             basic.pause(1500);
@@ -158,12 +160,15 @@ namespace HARDWARIO {
         serial.writeLine(" ");
         basic.pause(2000);
     }
-
+    /**
+        Computes the square of x
+        @param x the number to square
+    **/
     //%block="getPressure"
-    export function getPressure() : number {
+    export function getPressure(): number {
 
         let buf: Buffer;
-        
+
         if (!mpl3115a2_initialized) {
             buf = pins.createBufferFromArray([0x26, 0x04]);
             pins.i2cWriteBuffer(96, buf);
