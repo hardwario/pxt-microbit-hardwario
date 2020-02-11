@@ -11,6 +11,10 @@ namespace HARDWARIO {
     let opt3001_initialized: boolean = false;
     let mpl3115a2_initialized: boolean = false;
 
+    /**
+    * Reads the current value of light intensity from the sensor
+	    * Returns light intensity in lux. 
+    */
     //%block
     export function getLight(): number {
 
@@ -57,7 +61,10 @@ namespace HARDWARIO {
     export function getCO2() {
 
     }
-
+    /**
+    * Reads the current value of temperature from the sensor
+	    * Returns temperature in celsius. 
+    */
     //%block="getTemperature"
     export function getTemperature(): number {
 
@@ -77,8 +84,8 @@ namespace HARDWARIO {
     }
 
     /**
-    * Reads the number of times the rain gauge has filled and emptied
-	    * Returns inches of rain. 
+    * Reads the current value of humidity from the sensor
+	    * Returns relative humidity in percent. 
     */
     //%block="getHumidity"
     export function getHumidity(): number {
@@ -102,7 +109,10 @@ namespace HARDWARIO {
         return (hum_sht_per);
         basic.pause(2000);
     }
-
+    /**
+    * Reads the current altitude from the barometer sensor
+	    * Returns meters above sea level.
+    */
     //%block="getAltitude"
     export function getAltitude(): number {
         let buf: Buffer;
@@ -161,9 +171,9 @@ namespace HARDWARIO {
         basic.pause(2000);
     }
     /**
-        Computes the square of x
-        @param x the number to square
-    **/
+    * Reads the current atmospheric pressure from the barometer sensor
+	    * Returns atmospheric pressure in pascals.
+    */
     //%block="getPressure"
     export function getPressure(): number {
 
@@ -225,6 +235,9 @@ namespace HARDWARIO {
         basic.pause(2000);
     }
 
+    /**
+    * Sets the state of bi-stable relay on the Relay Module on/off
+    */
     //%block="set relay state $state"
     export function setRelay(state: relayState) {
         tca9534a_init();
