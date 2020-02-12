@@ -3,41 +3,47 @@ enum relayState {
     off
 }
 
+const lux_address = 68;
+const temp_address = 72;
 
-
+//% color=#e30427 icon="\uf2db"
 namespace HARDWARIO {
 
     let tca9534a_initialized: boolean = false;
     let opt3001_initialized: boolean = false;
     let mpl3115a2_initialized: boolean = false;
 
-    //%block
-    export function getLight(): number {
+    /**
+    * Reads the current value of light intensity from the sensor
+	    * Returns light intensity in lux. 
+    */
+    //%block="getLight"
+    export function get_light(): number {
 
         let buf: Buffer;
 
         if (!opt3001_initialized) {
             buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
-            pins.i2cWriteBuffer(68, buf); //Init
+            pins.i2cWriteBuffer(lux_address, buf); //Init
             basic.pause(50);
             opt3001_initialized = true;
         }
 
         buf = pins.createBufferFromArray([0x01, 0xca, 0x10]);
-        pins.i2cWriteBuffer(68, buf);
+        pins.i2cWriteBuffer(lux_address, buf);
         basic.pause(1000);
 
         buf = pins.createBufferFromArray([0x01]);
-        pins.i2cWriteBuffer(68, buf);
+        pins.i2cWriteBuffer(lux_address, buf);
 
-        let lux_status: number = pins.i2cReadNumber(68, NumberFormat.UInt16BE);
+        let lux_status: number = pins.i2cReadNumber(lux_address, NumberFormat.UInt16BE);
         serial.writeLine("Lux status: " + lux_status);
         if ((lux_status & 0x0680) == 0x0080) {
 
             buf = pins.createBufferFromArray([0x00]);
-            pins.i2cWriteBuffer(68, buf);
+            pins.i2cWriteBuffer(lux_address, buf);
 
-            let raw: number = pins.i2cReadNumber(68, NumberFormat.UInt16BE);
+            let raw: number = pins.i2cReadNumber(lux_address, NumberFormat.UInt16BE);
 
             let exponent: number = raw >> 12;
 
@@ -53,21 +59,24 @@ namespace HARDWARIO {
         return -1;
 
     }
-    //%block
-    export function getCO2() {
-
+    //%block="getCO2"
+    export function get_CO2(): number {
+        return 0;
     }
-
+    /**
+    * Reads the current value of temperature from the sensor
+	    * Returns temperature in celsius. 
+    */
     //%block="getTemperature"
-    export function getTemperature(): number {
+    export function get_temperature(): number {
 
         let buf: Buffer = pins.createBufferFromArray([0x01, 0x80]);
-        pins.i2cWriteBuffer(72, buf);
+        pins.i2cWriteBuffer(temp_address, buf);
 
         buf.fill(0);
-        pins.i2cWriteBuffer(72, buf);
+        pins.i2cWriteBuffer(temp_address, buf);
 
-        let temp = pins.i2cReadBuffer(72, 2);
+        let temp = pins.i2cReadBuffer(temp_address, 2);
         let tmp112 = temp[0] + (temp[1] / 100)
 
         serial.writeLine("TEMP");
@@ -77,11 +86,11 @@ namespace HARDWARIO {
     }
 
     /**
-    * Reads the number of times the rain gauge has filled and emptied
-	    * Returns inches of rain. 
+    * Reads the current value of humidity from the sensor
+	    * Returns relative humidity in percent. 
     */
     //%block="getHumidity"
-    export function getHumidity(): number {
+    export function get_humidity(): number {
 
         let buf: Buffer = pins.createBufferFromArray([0xfe]);
         pins.i2cWriteBuffer(64, buf);
@@ -99,12 +108,15 @@ namespace HARDWARIO {
         serial.writeNumber(hum_sht_per);
 
         serial.writeLine(" ");
-        return (hum_sht_per);
+        return hum_sht_per;
         basic.pause(2000);
     }
-
+    /**
+    * Reads the current altitude from the barometer sensor
+	    * Returns meters above sea level.
+    */
     //%block="getAltitude"
-    export function getAltitude(): number {
+    export function get_altitude(): number {
         let buf: Buffer;
         if (!mpl3115a2_initialized) {
             buf = pins.createBufferFromArray([0x26, 0x04]);
@@ -152,7 +164,6 @@ namespace HARDWARIO {
 
             let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
 
-            serial.writeLine("altitude: " + meter);
             return meter;
 
         }
@@ -161,11 +172,11 @@ namespace HARDWARIO {
         basic.pause(2000);
     }
     /**
-        Computes the square of x
-        @param x the number to square
-    **/
+    * Reads the current atmospheric pressure from the barometer sensor
+	    * Returns atmospheric pressure in pascals.
+    */
     //%block="getPressure"
-    export function getPressure(): number {
+    export function get_pressure(): number {
 
         let buf: Buffer;
 
@@ -189,14 +200,15 @@ namespace HARDWARIO {
         buf.fill(0);
         pins.i2cWriteBuffer(96, buf);
 
-        let pre_status = pins.i2cReadNumber(96, 1);
+        let pre_status = read_number_from_I2C(96, buf, NumberFormat.Int8LE)
+        pins.i2cReadNumber(96, 1);
 
         serial.writeLine('pressure');
         if (pre_status == 0x0e) {
             buf = pins.createBufferFromArray([0x01]);
-            pins.i2cWriteBuffer(96, buf);
 
-            let resultBuf: Buffer = pins.i2cReadBuffer(96, 5);
+            let resultBuf: Buffer = read_buffer_from_I2C(96, buf, 5);
+
             serial.writeLine("resultBuf[0]: " + resultBuf[0]);
             serial.writeLine("resultBuf[1]: " + resultBuf[1]);
             serial.writeLine("resultBuf[2]: " + resultBuf[2]);
@@ -216,7 +228,6 @@ namespace HARDWARIO {
 
             let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
 
-            serial.writeLine("pressure: " + pascal);
             return pascal;
 
         }
@@ -225,8 +236,11 @@ namespace HARDWARIO {
         basic.pause(2000);
     }
 
+    /**
+    * Sets the state of bi-stable relay on the Relay Module to on/off
+    */
     //%block="set relay state $state"
-    export function setRelay(state: relayState) {
+    export function set_relay(state: relayState) {
         tca9534a_init();
         if (state == relayState.on) {
             tca9534a_write_port(((1 << 4) | (1 << 5)));
@@ -236,20 +250,19 @@ namespace HARDWARIO {
         }
     }
 
+    /**
+     * Helper functions
+     */
     function tca9534a_init() {
         if (!tca9534a_initialized) {
             let buf: Buffer = pins.createBufferFromArray([0x03]);
-            pins.i2cWriteBuffer(59, buf);
+            let returnVal: number;
 
-            let returnVal: number = pins.i2cReadNumber(59, NumberFormat.UInt8BE);
-
-            serial.writeLine("Direction: " + returnVal);
+            returnVal = read_number_from_I2C(59, buf, NumberFormat.UInt8BE);
 
             buf = pins.createBufferFromArray([0x01]);
-            pins.i2cWriteBuffer(59, buf);
-            returnVal = pins.i2cReadNumber(59, NumberFormat.UInt8BE);
+            returnVal = read_number_from_I2C(59, buf, NumberFormat.UInt8BE);
 
-            serial.writeLine("OutputPort: " + returnVal);
 
             tca9534a_write_port(((1 << 6) | (1 << 4)));
 
@@ -261,24 +274,27 @@ namespace HARDWARIO {
 
     function tca9534a_write_port(value: NumberFormat.UInt8BE) {
         let buf: Buffer = pins.createBufferFromArray([0x01, value]);
-        pins.i2cWriteBuffer(59, buf);
-
         let returnVal: number;
 
-        returnVal = pins.i2cReadNumber(59, NumberFormat.UInt8BE);
+        returnVal = read_number_from_I2C(59, buf, NumberFormat.UInt8BE);
 
-        serial.writeLine("OutputPort: " + returnVal);
     }
 
     function tca9534a_set_port_direction(direction: NumberFormat.UInt8BE) {
         let buf: Buffer = pins.createBufferFromArray([0x03, direction]);
-        pins.i2cWriteBuffer(59, buf);
-
         let returnVal: number;
+        returnVal = read_number_from_I2C(59, buf, NumberFormat.UInt8BE);
+    }
 
-        returnVal = pins.i2cReadNumber(59, NumberFormat.UInt8BE);
+    function read_number_from_I2C(address: number, buffer: Buffer, format: NumberFormat): number {
 
-        serial.writeLine("DIRECTION: " + returnVal);
+        pins.i2cWriteBuffer(address, buffer);
+        return pins.i2cReadNumber(address, format);
+    }
+
+    function read_buffer_from_I2C(address: number, buffer: Buffer, size: number): Buffer {
+        pins.i2cWriteBuffer(address, buffer);
+        return pins.i2cReadBuffer(address, size);
     }
 }
 
