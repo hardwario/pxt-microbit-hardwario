@@ -13,6 +13,7 @@ namespace HARDWARIO {
     let opt3001_initialized: boolean = false;
     let mpl3115a2_initialized: boolean = false;
 
+
     /**
     * Reads the current value of light intensity from the sensor
 	    * Returns light intensity in lux. 
