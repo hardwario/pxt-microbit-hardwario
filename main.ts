@@ -19,7 +19,6 @@ namespace HARDWARIO {
     */
     //%block="getLight"
     export function get_light(): number {
-
         let buf: Buffer;
 
         if (!opt3001_initialized) {
