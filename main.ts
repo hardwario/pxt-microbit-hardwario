@@ -1,3 +1,16 @@
+/**
+* Jakub Smejkal @ HARDWARIO s.r.o.
+* February 2020
+* https://github.com/SmejkalJakub/pxt-HARDWARIO
+* Development environment specifics:
+* Written in Microsoft PXT
+*
+* This code is released under the [MIT License](http://opensource.org/licenses/MIT).
+* Please review the LICENSE.md file included with this example. If you have any questions 
+* or concerns with licensing, please contact support@hardwario.com.
+* Distributed as-is; no warranty is given.
+*/
+
 enum relayState {
     on,
     off
@@ -5,6 +18,9 @@ enum relayState {
 
 const lux_address = 68;
 const temp_address = 72;
+const humidity_address = 64;
+const barometer_address = 96;
+const tca9534a_address = 59;
 
 //% color=#e30427 icon="\uf2db"
 namespace HARDWARIO {
@@ -93,14 +109,14 @@ namespace HARDWARIO {
     export function get_humidity(): number {
 
         let buf: Buffer = pins.createBufferFromArray([0xfe]);
-        pins.i2cWriteBuffer(64, buf);
+        pins.i2cWriteBuffer(humidity_address, buf);
         basic.pause(20);
 
         buf = pins.createBufferFromArray([0xf5]);
-        pins.i2cWriteBuffer(64, buf);
+        pins.i2cWriteBuffer(humidity_address, buf);
         basic.pause(50);
 
-        let hum_sht = pins.i2cReadBuffer(64, 2);
+        let hum_sht = pins.i2cReadBuffer(humidity_address, 2);
 
         serial.writeLine('humidity')
         let hum_sht_raw = ((hum_sht[0]) * 256) + (hum_sht[1])
@@ -120,32 +136,32 @@ namespace HARDWARIO {
         let buf: Buffer;
         if (!mpl3115a2_initialized) {
             buf = pins.createBufferFromArray([0x26, 0x04]);
-            pins.i2cWriteBuffer(96, buf);
+            pins.i2cWriteBuffer(barometer_address, buf);
             basic.pause(1500);
             mpl3115a2_initialized = true;
         }
 
         buf = pins.createBufferFromArray([0x26, 0xb8]);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
 
         buf = pins.createBufferFromArray([0x13, 0x07]);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
 
         buf = pins.createBufferFromArray([0x26, 0xba]);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
         basic.pause(1500);
 
         buf.fill(0);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
 
-        let alt_status = pins.i2cReadNumber(96, 1);
+        let alt_status = pins.i2cReadNumber(barometer_address, 1);
 
         serial.writeLine('altitude');
         if (alt_status == 0x0e) {
             buf = pins.createBufferFromArray([0x01]);
-            pins.i2cWriteBuffer(96, buf);
+            pins.i2cWriteBuffer(barometer_address, buf);
 
-            let resultBuf: Buffer = pins.i2cReadBuffer(96, 5);
+            let resultBuf: Buffer = pins.i2cReadBuffer(barometer_address, 5);
             serial.writeLine("resultBuf[0]: " + resultBuf[0]);
             serial.writeLine("resultBuf[1]: " + resultBuf[1]);
             serial.writeLine("resultBuf[2]: " + resultBuf[2]);
@@ -182,32 +198,32 @@ namespace HARDWARIO {
 
         if (!mpl3115a2_initialized) {
             buf = pins.createBufferFromArray([0x26, 0x04]);
-            pins.i2cWriteBuffer(96, buf);
+            pins.i2cWriteBuffer(barometer_address, buf);
             basic.pause(1500);
             mpl3115a2_initialized = true;
         }
 
         buf = pins.createBufferFromArray([0x26, 0x38]);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
 
         buf = pins.createBufferFromArray([0x13, 0x07]);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
 
         buf = pins.createBufferFromArray([0x26, 0x3a]);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
         basic.pause(1500);
 
         buf.fill(0);
-        pins.i2cWriteBuffer(96, buf);
+        pins.i2cWriteBuffer(barometer_address, buf);
 
-        let pre_status = read_number_from_I2C(96, buf, NumberFormat.Int8LE)
-        pins.i2cReadNumber(96, 1);
+        let pre_status = read_number_from_I2C(barometer_address, buf, NumberFormat.Int8LE)
+        pins.i2cReadNumber(barometer_address, 1);
 
         serial.writeLine('pressure');
         if (pre_status == 0x0e) {
             buf = pins.createBufferFromArray([0x01]);
 
-            let resultBuf: Buffer = read_buffer_from_I2C(96, buf, 5);
+            let resultBuf: Buffer = read_buffer_from_I2C(barometer_address, buf, 5);
 
             serial.writeLine("resultBuf[0]: " + resultBuf[0]);
             serial.writeLine("resultBuf[1]: " + resultBuf[1]);
