@@ -1,0 +1,10 @@
+{
+    "hardwario": "Jakub Smejkal @ HARDWARIO s.r.o.\nÚnor 2020\nhttps://github.com/SmejkalJakub/pxt-HARDWARIO\nSpecifikace vývojového prostředí:\nNapsáno v Microsoft PXT\n\nThis code is released under the [MIT License](http://opensource.org/licenses/MIT).\nPlease review the LICENSE.md file included with this example. If you have any questions \nor concerns with licensing, please contact support@hardwario.com.\nDistributed as-is; no warranty is given.",
+    "hardwario.getLight": "Vyčte aktuální hodnotu intenzity světla ze senzoru\nVrací intensitu světla v jednotkách lux.",
+    "hardwario.getTemperature": "Vyčte aktuální hodnotu teploty ze senzoru\nVrací teplotu ve stupních celsia.",
+    "hardwario.getHumidity": "Vyčte aktuální hodnotu vlhkosti ze senzoru\nVrací relativní vlhkost v procentech.",
+    "hardwario.getAltitude": "Vyčte aktuální hodnotu nadmořské výšky ze senzoru\nVrací hodnotu v metrech nad mořem.",
+    "hardwario.getPressure": "Vyčte aktuální hodnotu atmosférického tlaku ze senzoru\nVrací atmosférický tlak v pascalech.",
+    "hardwario.setRelay": "Nastaví stav bi-stabilního relé na Relé Modulu na on/off",
+    "hardwario.getCO2": "CO2"
+  }

@@ -1,0 +1,9 @@
+{
+  "hardwario.getLight|block": "getLight",
+  "hardwario.getTemperature|block": "getTemperature",
+  "hardwario.getHumidity|block": "getHumidity",
+  "hardwario.getAltitude|block": "getAltitude",
+  "hardwario.getPressure|block": "getPressure",
+  "hardwario.setRelay|block": "set relay state $state",
+  "hardwario|block": "hardwario"
+}

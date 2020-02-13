@@ -1,0 +1,9 @@
+{
+    "hardwario.getLight|block": "intenzita světla",
+    "hardwario.getTemperature|block": "teplota",
+    "hardwario.getHumidity|block": "vlhkost",
+    "hardwario.getAltitude|block": "nadmořská výška",
+    "hardwario.getPressure|block": "atmosferický tlak",
+    "hardwario.setRelay|block": "nastav relé na %state",
+    "hardwario|block": "hardwario"
+  }

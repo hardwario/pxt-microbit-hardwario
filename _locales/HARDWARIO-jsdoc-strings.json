@@ -1,0 +1,10 @@
+{
+    "hardwario": "Jakub Smejkal @ HARDWARIO s.r.o.\nFebruary 2020\nhttps://github.com/SmejkalJakub/pxt-HARDWARIO\nDevelopment environment specifics:\nWritten in Microsoft PXT\n\nThis code is released under the [MIT License](http://opensource.org/licenses/MIT).\nPlease review the LICENSE.md file included with this example. If you have any questions \nor concerns with licensing, please contact support@hardwario.com.\nDistributed as-is; no warranty is given.",
+    "hardwario.getLight": "Reads the current value of light intensity from the sensor\nReturns light intensity in lux.",
+    "hardwario.getTemperature": "Reads the current value of temperature from the sensor\nReturns temperature in celsius.",
+    "hardwario.getHumidity": "Reads the current value of humidity from the sensor\nReturns relative humidity in percent.",
+    "hardwario.getAltitude": "Reads the current altitude from the barometer sensor\nReturns meters above sea level.",
+    "hardwario.getPressure": "Reads the current atmospheric pressure from the barometer sensor\nReturns atmospheric pressure in pascals.",
+    "hardwario.setRelay": "Sets the state of bi-stable relay on the Relay Module to on/off",
+    "hardwario.getCO2": "CO2"
+  }
