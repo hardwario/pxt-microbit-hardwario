@@ -22,8 +22,8 @@ const humidityAddress = 64;
 const barometerAddress = 96;
 const tca9534aAddress = 59;
 
-//% color=#e30427 icon="\uf2db"
-namespace HARDWARIO {
+//% color=#e30427 icon="\uf2db" block="HARDWARIO"
+namespace hardwario {
 
     let tca9534aInitialized: boolean = false;
     let opt3001Initialized: boolean = false;
