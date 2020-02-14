@@ -269,17 +269,19 @@ namespace hardwario {
 
     }
 
-    //%block="motionDetectorInit"
-    export function motionDetectorInit() {
+    //%block="motionDetectorInit %pin"
+    export function motionDetectorInit(pin: DigitalPin) {
         /*let config: number = 0x00000000;
         config |= (70 << 12) | (0x02 << 7) | (0x00 << 5) | 0x10;*/
-        pins.setPull(DigitalPin.P2, PinPullMode.PullDown);
-        let motion: number = pins.digitalReadPin(DigitalPin.P2);
+        
+        let motion: number = pins.digitalReadPin(pin);
         serial.writeLine("Pohyb: " + motion);
-        if(motion != 0)
+        /*if(motion != 0)
         {
-            pins.digitalWritePin(DigitalPin.P2, 0);
-        }
+            serial.writeLine("Zaznamenán pohyb-------------------------------------------------------");
+            basic.pause(100);
+            pins.digitalWritePin(pin, 0);
+        }*/
     }
 
     /**
