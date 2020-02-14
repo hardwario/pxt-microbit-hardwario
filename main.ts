@@ -273,10 +273,13 @@ namespace hardwario {
     export function motionDetectorInit() {
         /*let config: number = 0x00000000;
         config |= (70 << 12) | (0x02 << 7) | (0x00 << 5) | 0x10;*/
-        pins.setPull(DigitalPin.P8, PinPullMode.PullDown);
-        let motion: number = pins.digitalReadPin(DigitalPin.P8);
+        pins.setPull(DigitalPin.P2, PinPullMode.PullDown);
+        let motion: number = pins.digitalReadPin(DigitalPin.P2);
         serial.writeLine("Pohyb: " + motion);
-        basic.pause(1000);
+        if(motion != 0)
+        {
+            pins.digitalWritePin(DigitalPin.P2, 0);
+        }
     }
 
     /**
