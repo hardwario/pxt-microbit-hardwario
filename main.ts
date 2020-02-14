@@ -269,7 +269,7 @@ namespace hardwario {
 
     }
 
-    //%block="motionDetectorInit %pin"
+    //%block="motionDetectorInit $pin"
     export function motionDetectorInit(pin: DigitalPin) {
         /*let config: number = 0x00000000;
         config |= (70 << 12) | (0x02 << 7) | (0x00 << 5) | 0x10;*/
