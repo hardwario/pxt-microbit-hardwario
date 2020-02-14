@@ -28,6 +28,7 @@ namespace hardwario {
     let tca9534aInitialized: boolean = false;
     let opt3001Initialized: boolean = false;
     let mpl3115a2Initialized: boolean = false;
+    let motionInit: boolean = false;
 
 
     /**
@@ -85,7 +86,6 @@ namespace hardwario {
     */
     //%block="getTemperature"
     export function getTemperature(): number {
-
         let buf: Buffer = pins.createBufferFromArray([0x01, 0x80]);
         pins.i2cWriteBuffer(tempAddress, buf);
 
@@ -99,6 +99,7 @@ namespace hardwario {
         serial.writeNumber(tmp112);
         return tmp112;
         basic.pause(2000);
+        
     }
 
     /**
@@ -269,19 +270,38 @@ namespace hardwario {
 
     }
 
-    //%block="motionDetectorInit $pin"
-    export function motionDetectorInit(pin: DigitalPin) {
-        /*let config: number = 0x00000000;
-        config |= (70 << 12) | (0x02 << 7) | (0x00 << 5) | 0x10;*/
-        
-        let motion: number = pins.digitalReadPin(pin);
-        serial.writeLine("Pohyb: " + motion);
-        /*if(motion != 0)
-        {
-            serial.writeLine("Zaznamenán pohyb-------------------------------------------------------");
-            basic.pause(100);
-            pins.digitalWritePin(pin, 0);
-        }*/
+    //%block="motionDetectorTask $pin"
+    export function motionDetectorTask(pin: DigitalPin) {
+        /*control.inBackground(() => {
+        })*/
+        basic.forever(function () {
+            while (true) {
+
+                serial.writeLine("START");
+                basic.pause(5000);
+
+                if (!motionInit) {
+                    serial.writeLine("INIT");
+                    pins.setPull(pin, PinPullMode.PullDown);
+                    motionInit = true;
+                }
+                let motion: number = pins.digitalReadPin(pin);
+                serial.writeLine("Pohyb: " + motion);
+
+                if (motion) {
+                    control.onEvent(0, 0, function () {
+
+                    })
+                    serial.writeLine("motion detected");
+                    pins.setPull(pin, PinPullMode.PullNone);
+                    pins.digitalWritePin(pin, 0);
+                    basic.pause(2);
+                    pins.setPull(pin, PinPullMode.PullDown);
+                    pins.digitalReadPin(pin);
+                    basic.pause(100);
+                }
+            }
+        })
     }
 
     /**
