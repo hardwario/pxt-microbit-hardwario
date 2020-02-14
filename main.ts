@@ -276,7 +276,7 @@ namespace hardwario {
         pins.digitalWritePin(DigitalPin.P1, 0);
         basic.pause(100);
 
-        serial.writeLine("BATTERY:" + pins.analogReadPin(AnalogPin.P0));
+        serial.writeLine("BATTERY:" + ((pins.analogReadPin(AnalogPin.P0) * 3.3) / 65536.0));
         pins.analogWritePin(AnalogPin.P1, 1023);
         basic.pause(3000);
     }
