@@ -99,7 +99,7 @@ namespace hardwario {
         serial.writeNumber(tmp112);
         return tmp112;
         basic.pause(2000);
-        
+
     }
 
     /**
@@ -269,37 +269,44 @@ namespace hardwario {
         tca9534aWritePort(0);
 
     }
+    //%block="getVoltage"
+    export function getBatteryVoltage()
+    {
+        serial.writeLine("START");
+        pins.digitalWritePin(DigitalPin.P1, 0);
+        basic.pause(100);
+
+        serial.writeLine("BATTERY:" + pins.analogReadPin(AnalogPin.P0));
+        pins.analogWritePin(AnalogPin.P1, 1023);
+        basic.pause(3000);
+    }
 
     //%block="motionDetectorTask $pin"
     export function motionDetectorTask(pin: DigitalPin) {
-        /*control.inBackground(() => {
-        })*/
+        serial.writeLine("START");
         basic.forever(function () {
             while (true) {
 
-                serial.writeLine("START");
-                basic.pause(5000);
-
                 if (!motionInit) {
+
                     serial.writeLine("INIT");
-                    pins.setPull(pin, PinPullMode.PullDown);
+                    pins.setPull(pin, PinPullMode.PullNone);
                     motionInit = true;
                 }
+
                 let motion: number = pins.digitalReadPin(pin);
                 serial.writeLine("Pohyb: " + motion);
 
                 if (motion) {
-                    control.onEvent(0, 0, function () {
 
-                    })
                     serial.writeLine("motion detected");
-                    pins.setPull(pin, PinPullMode.PullNone);
+
                     pins.digitalWritePin(pin, 0);
-                    basic.pause(2);
-                    pins.setPull(pin, PinPullMode.PullDown);
-                    pins.digitalReadPin(pin);
                     basic.pause(100);
+                    pins.digitalReadPin(pin);
+
                 }
+                basic.pause(100);
             }
         })
     }
