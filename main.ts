@@ -1,5 +1,5 @@
 /**
-* Jakub Smejkal @ HARDWARIO s.r.o.
+* Jakub Smejkal, Karel Blavka @ HARDWARIO s.r.o.
 * February 2020
 * https://github.com/SmejkalJakub/pxt-HARDWARIO
 * Development environment specifics:
@@ -14,6 +14,11 @@
 enum RelayState {
     On,
     Off
+}
+
+enum BatteryModuleType {
+    Mini,
+    Standard
 }
 
 const luxAddress = 68;
@@ -62,8 +67,7 @@ namespace hardwario {
     */
     //%block="getTemperature"
     export function getTemperature(): number {
-        if(!tempInitialized)
-        {
+        if (!tempInitialized) {
             startTempMeasurement();
         }
         return Math.trunc(temperature);
@@ -77,8 +81,7 @@ namespace hardwario {
     //%block="getHumidity"
     export function getHumidity(): number {
 
-        if(!humidityInititialized)
-        {
+        if (!humidityInititialized) {
             startHumidityMeasurement();
         }
         return Math.trunc(humidity);
@@ -233,16 +236,21 @@ namespace hardwario {
         tca9534aWritePort(0);
 
     }
-    //%block="getVoltage"
-    export function getBatteryVoltage() {
+    /**
+    * Get battery voltage of the batteries in Battery Module. You have to choose if you have
+    * standard(4 batteries) or mini(2 batteries) version of the Module
+    */
+    //%block="voltage on $type | battery module"
+    export function getBatteryVoltage(type: BatteryModuleType): number {
         serial.writeLine("START");
         pins.digitalWritePin(DigitalPin.P1, 0);
         basic.pause(100);
 
         let result: number = pins.analogReadPin(AnalogPin.P0);
-        result <<= 6;
-        serial.writeLine("BATTERY:" + ((result * 1.2) / 65536.0));
+
         pins.analogWritePin(AnalogPin.P1, 1023);
+        serial.writeLine("RESULT: " + 3 / 1024 * result / 0.33);
+        return (3 / 1024 * result / 0.33) + 0.1;
         basic.pause(3000);
     }
     //%block="getVOC"
@@ -281,13 +289,24 @@ namespace hardwario {
 
     export function lcd() {
         tca9534aInit(60);
-        tca9534aWritePort(((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)))
+        tca9534aWritePort(((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
+        tca9534aSetPortDirection((1 << 1) | (1 << 3));
+        pins.spiFrequency(1000000);
+        pins.spiFormat(8, 3);
 
     }
 
     /**
      * Helper functions
      */
+
+    function bc_ls013b7dh03_reverse(b: number): number {
+        b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
+        b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
+        b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
+
+        return b;
+    }
 
     function startLightMeasurement() {
         let buf: Buffer;
@@ -334,15 +353,13 @@ namespace hardwario {
         })
     }
 
-    function startTempMeasurement()
-    {
+    function startTempMeasurement() {
         tempInitialized = true;
         let temp;
         let tmp112;
         control.inBackground(function () {
             let buf: Buffer;
-            while(true)
-            {
+            while (true) {
                 buf = pins.createBufferFromArray([0x01, 0x80]);
                 pins.i2cWriteBuffer(tempAddress, buf);
 
@@ -364,8 +381,7 @@ namespace hardwario {
         humidityInititialized = true;
         control.inBackground(function () {
             let buf: Buffer;
-            while(true)
-            {
+            while (true) {
                 buf = pins.createBufferFromArray([0xfe]);
                 pins.i2cWriteBuffer(humidityAddress, buf);
                 basic.pause(20);
@@ -386,7 +402,7 @@ namespace hardwario {
                 basic.pause(2000);
             }
         })
-        
+
     }
 
     function tca9534aInit(i2cAddress: number) {
