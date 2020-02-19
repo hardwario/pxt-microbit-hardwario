@@ -121,17 +121,12 @@ namespace hardwario {
             pins.i2cWriteBuffer(barometerAddress, buf);
 
             let resultBuf: Buffer = pins.i2cReadBuffer(barometerAddress, 5);
-            serial.writeLine("resultBuf[0]: " + resultBuf[0]);
-            serial.writeLine("resultBuf[1]: " + resultBuf[1]);
-            serial.writeLine("resultBuf[2]: " + resultBuf[2]);
-            serial.writeLine("resultBuf[3]: " + resultBuf[3]);
-            serial.writeLine("resultBuf[4]: " + resultBuf[4]);
 
-            let firstParam: NumberFormat.UInt32BE = resultBuf[0] << 24;
+            let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 24;
 
-            let secondParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
+            let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 16;
 
-            let thirdParam: NumberFormat.UInt32BE = (resultBuf[2] & 0xf0);
+            let thirdParam: NumberFormat.UInt32BE = (resultBuf[3] & 0xf0);
 
             thirdParam = thirdParam << 8;
 
@@ -184,17 +179,11 @@ namespace hardwario {
 
             let resultBuf: Buffer = readBufferFromI2C(barometerAddress, buf, 5);
 
-            serial.writeLine("resultBuf[0]: " + resultBuf[0]);
-            serial.writeLine("resultBuf[1]: " + resultBuf[1]);
-            serial.writeLine("resultBuf[2]: " + resultBuf[2]);
-            serial.writeLine("resultBuf[3]: " + resultBuf[3]);
-            serial.writeLine("resultBuf[4]: " + resultBuf[4]);
+            let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
 
-            let firstParam: NumberFormat.UInt32BE = resultBuf[4] << 16;
+            let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 8;
 
-            let secondParam: NumberFormat.UInt32BE = resultBuf[3] << 8;
-
-            let thirdParam: NumberFormat.UInt32BE = resultBuf[2];
+            let thirdParam: NumberFormat.UInt32BE = resultBuf[3];
 
             thirdParam = thirdParam << 8;
 
@@ -444,4 +433,3 @@ namespace hardwario {
         return pins.i2cReadBuffer(address, size);
     }
 }
-
