@@ -92,54 +92,12 @@ namespace hardwario {
     */
     //%block="getAltitude"
     export function getAltitude(): number {
-        let buf: Buffer;
-        if (!mpl3115a2Initialized) {
-            buf = pins.createBufferFromArray([0x26, 0x04]);
-            pins.i2cWriteBuffer(barometerAddress, buf);
-            basic.pause(1500);
-            mpl3115a2Initialized = true;
+        if(!mpl3115a2Initialized)
+        {
+            startBarometerMeasurement();
         }
-
-        buf = pins.createBufferFromArray([0x26, 0xb8]);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-
-        buf = pins.createBufferFromArray([0x13, 0x07]);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-
-        buf = pins.createBufferFromArray([0x26, 0xba]);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-        basic.pause(1500);
-
-        buf.fill(0);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-
-        let alt_status = pins.i2cReadNumber(barometerAddress, 1);
-
-        serial.writeLine('altitude');
-        if (alt_status == 0x0e) {
-            buf = pins.createBufferFromArray([0x01]);
-            pins.i2cWriteBuffer(barometerAddress, buf);
-
-            let resultBuf: Buffer = pins.i2cReadBuffer(barometerAddress, 5);
-
-            let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 24;
-
-            let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 16;
-
-            let thirdParam: NumberFormat.UInt32BE = (resultBuf[3] & 0xf0);
-
-            thirdParam = thirdParam << 8;
-
-            let out_pa: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
-
-            let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
-
-            return meter;
-
-        }
-        return -1;
-        serial.writeLine(" ");
-        basic.pause(2000);
+        serial.writeNumber(altitude);
+        return Math.trunc(altitude);
     }
     /**
     * Reads the current atmospheric pressure from the barometer sensor
@@ -147,57 +105,13 @@ namespace hardwario {
     */
     //%block="getPressure"
     export function getPressure(): number {
-
-        let buf: Buffer;
-
-        if (!mpl3115a2Initialized) {
-            buf = pins.createBufferFromArray([0x26, 0x04]);
-            pins.i2cWriteBuffer(barometerAddress, buf);
-            basic.pause(1500);
-            mpl3115a2Initialized = true;
+        if(!mpl3115a2Initialized)
+        {
+            startBarometerMeasurement();
         }
-
-        buf = pins.createBufferFromArray([0x26, 0x38]);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-
-        buf = pins.createBufferFromArray([0x13, 0x07]);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-
-        buf = pins.createBufferFromArray([0x26, 0x3a]);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-        basic.pause(1500);
-
-        buf.fill(0);
-        pins.i2cWriteBuffer(barometerAddress, buf);
-
-        let pre_status = readNumberFromI2C(barometerAddress, buf, NumberFormat.Int8LE)
-        pins.i2cReadNumber(barometerAddress, 1);
-
-        serial.writeLine('pressure');
-        if (pre_status == 0x0e) {
-            buf = pins.createBufferFromArray([0x01]);
-
-            let resultBuf: Buffer = readBufferFromI2C(barometerAddress, buf, 5);
-
-            let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
-
-            let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 8;
-
-            let thirdParam: NumberFormat.UInt32BE = resultBuf[3];
-
-            thirdParam = thirdParam << 8;
-
-
-            let out_p: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
-
-            let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
-
-            return pascal;
-
-        }
-        return -1;
-        serial.writeLine(" ");
-        basic.pause(2000);
+        serial.writeNumber(pressure);
+        return Math.trunc(pressure);
+        
     }
 
     /**
@@ -295,6 +209,93 @@ namespace hardwario {
         b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
 
         return b;
+    }
+
+    function startBarometerMeasurement() {
+
+        control.inBackground(function () {
+            let buf: Buffer;
+
+            if (!mpl3115a2Initialized) {
+                buf = pins.createBufferFromArray([0x26, 0x04]);
+                pins.i2cWriteBuffer(barometerAddress, buf);
+                basic.pause(1500);
+                mpl3115a2Initialized = true;
+            }
+
+            buf = pins.createBufferFromArray([0x26, 0x38]);
+            pins.i2cWriteBuffer(barometerAddress, buf);
+
+            buf = pins.createBufferFromArray([0x13, 0x07]);
+            pins.i2cWriteBuffer(barometerAddress, buf);
+
+            buf = pins.createBufferFromArray([0x26, 0x3a]);
+            pins.i2cWriteBuffer(barometerAddress, buf);
+            basic.pause(1500);
+
+            buf.fill(0);
+
+            let pre_status = readNumberFromI2C(barometerAddress, buf, NumberFormat.Int8LE)
+
+            serial.writeLine('pressure');
+            if (pre_status == 0x0e) {
+                buf = pins.createBufferFromArray([0x01]);
+
+                let resultBuf: Buffer = readBufferFromI2C(barometerAddress, buf, 5);
+
+                let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
+
+                let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 8;
+
+                let thirdParam: NumberFormat.UInt32BE = resultBuf[3];
+
+                thirdParam = thirdParam << 8;
+
+
+                let out_p: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
+
+                let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
+
+                pressure = pascal;
+
+                buf = pins.createBufferFromArray([0x26, 0xb8]);
+                pins.i2cWriteBuffer(barometerAddress, buf);
+
+                buf = pins.createBufferFromArray([0x13, 0x07]);
+                pins.i2cWriteBuffer(barometerAddress, buf);
+
+                buf = pins.createBufferFromArray([0x26, 0xba]);
+                pins.i2cWriteBuffer(barometerAddress, buf);
+                basic.pause(1500);
+
+                buf.fill(0);
+
+                let alt_status = readNumberFromI2C(barometerAddress, buf, NumberFormat.Int8LE)
+
+                serial.writeLine('altitude');
+                if (alt_status == 0x0e) {
+                    buf = pins.createBufferFromArray([0x01]);
+                    pins.i2cWriteBuffer(barometerAddress, buf);
+
+                    let resultBuf: Buffer = pins.i2cReadBuffer(barometerAddress, 5);
+
+                    let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 24;
+
+                    let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 16;
+
+                    let thirdParam: NumberFormat.UInt32BE = (resultBuf[3] & 0xf0);
+
+                    thirdParam = thirdParam << 8;
+
+                    let out_pa: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
+
+                    let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
+
+                    altitude = meter;
+                }
+            }
+            basic.pause(2000);
+        })
     }
 
     function startLightMeasurement() {
