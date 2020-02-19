@@ -26,9 +26,19 @@ const tca9534aAddress = 59;
 namespace hardwario {
 
     let tca9534aInitialized: boolean = false;
+    let humidityInititialized: boolean = false;
+    let tempInitialized: boolean = false;
     let opt3001Initialized: boolean = false;
     let mpl3115a2Initialized: boolean = false;
     let motionInit: boolean = false;
+    let relayInit: boolean = false;
+
+
+    let temperature = 0;
+    let humidity = 0;
+    let lightIntensity = 0;
+    let pressure = 0;
+    let altitude = 0;
 
 
     /**
@@ -37,44 +47,10 @@ namespace hardwario {
     */
     //%block="getLight"
     export function getLight(): number {
-        let buf: Buffer;
-
         if (!opt3001Initialized) {
-            buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
-            pins.i2cWriteBuffer(luxAddress, buf); //Init
-            basic.pause(50);
-            opt3001Initialized = true;
+            startLightMeasurement();
         }
-
-        buf = pins.createBufferFromArray([0x01, 0xca, 0x10]);
-        pins.i2cWriteBuffer(luxAddress, buf);
-        basic.pause(1000);
-
-        buf = pins.createBufferFromArray([0x01]);
-        pins.i2cWriteBuffer(luxAddress, buf);
-
-        let lux_status: number = pins.i2cReadNumber(luxAddress, NumberFormat.UInt16BE);
-        serial.writeLine("Lux status: " + lux_status);
-        if ((lux_status & 0x0680) == 0x0080) {
-
-            buf = pins.createBufferFromArray([0x00]);
-            pins.i2cWriteBuffer(luxAddress, buf);
-
-            let raw: number = pins.i2cReadNumber(luxAddress, NumberFormat.UInt16BE);
-
-            let exponent: number = raw >> 12;
-
-            let fractResult: number = raw & 0xfff;
-
-            let shiftedExponent: number = 1 << exponent;
-
-            let lux: number = 0.01 * shiftedExponent * fractResult;
-            serial.writeLine("LUX: " + lux);
-            return lux;
-
-        }
-        return -1;
-
+        return Math.trunc(lightIntensity);
     }
     //%block="getCO2"
     export function getCO2(): number {
@@ -86,19 +62,11 @@ namespace hardwario {
     */
     //%block="getTemperature"
     export function getTemperature(): number {
-        let buf: Buffer = pins.createBufferFromArray([0x01, 0x80]);
-        pins.i2cWriteBuffer(tempAddress, buf);
-
-        buf.fill(0);
-        pins.i2cWriteBuffer(tempAddress, buf);
-
-        let temp = pins.i2cReadBuffer(tempAddress, 2);
-        let tmp112 = temp[0] + (temp[1] / 100)
-
-        serial.writeLine("TEMP");
-        serial.writeNumber(tmp112);
-        return tmp112;
-        basic.pause(2000);
+        if(!tempInitialized)
+        {
+            startTempMeasurement();
+        }
+        return Math.trunc(temperature);
 
     }
 
@@ -109,24 +77,11 @@ namespace hardwario {
     //%block="getHumidity"
     export function getHumidity(): number {
 
-        let buf: Buffer = pins.createBufferFromArray([0xfe]);
-        pins.i2cWriteBuffer(humidityAddress, buf);
-        basic.pause(20);
-
-        buf = pins.createBufferFromArray([0xf5]);
-        pins.i2cWriteBuffer(humidityAddress, buf);
-        basic.pause(50);
-
-        let hum_sht = pins.i2cReadBuffer(humidityAddress, 2);
-
-        serial.writeLine('humidity')
-        let hum_sht_raw = ((hum_sht[0]) * 256) + (hum_sht[1])
-        let hum_sht_per = -6 + 125 * hum_sht_raw / 65536
-        serial.writeNumber(hum_sht_per);
-
-        serial.writeLine(" ");
-        return hum_sht_per;
-        basic.pause(2000);
+        if(!humidityInititialized)
+        {
+            startHumidityMeasurement();
+        }
+        return Math.trunc(humidity);
     }
     /**
     * Reads the current altitude from the barometer sensor
@@ -258,7 +213,16 @@ namespace hardwario {
     */
     //%block="set relay state $state"
     export function setRelay(state: RelayState) {
-        tca9534aInit();
+        if (!relayInit) {
+            tca9534aInit(59);
+
+            tca9534aWritePort(((1 << 6) | (1 << 4)));
+
+            tca9534aSetPortDirection(0x00);
+
+            relayInit = true;
+        }
+
         if (state == RelayState.On) {
             tca9534aWritePort(((1 << 4) | (1 << 5)));
         }
@@ -270,17 +234,21 @@ namespace hardwario {
 
     }
     //%block="getVoltage"
-    export function getBatteryVoltage()
-    {
+    export function getBatteryVoltage() {
         serial.writeLine("START");
         pins.digitalWritePin(DigitalPin.P1, 0);
         basic.pause(100);
 
-        serial.writeLine("BATTERY:" + ((pins.analogReadPin(AnalogPin.P0) * 3.3) / 65536.0));
+        let result: number = pins.analogReadPin(AnalogPin.P0);
+        result <<= 6;
+        serial.writeLine("BATTERY:" + ((result * 1.2) / 65536.0));
         pins.analogWritePin(AnalogPin.P1, 1023);
         basic.pause(3000);
     }
+    //%block="getVOC"
+    export function getVOC() {
 
+    }
     //%block="motionDetectorTask $pin"
     export function motionDetectorTask(pin: DigitalPin) {
         serial.writeLine("START");
@@ -311,23 +279,125 @@ namespace hardwario {
         })
     }
 
+    export function lcd() {
+        tca9534aInit(60);
+        tca9534aWritePort(((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)))
+
+    }
+
     /**
      * Helper functions
      */
-    function tca9534aInit() {
+
+    function startLightMeasurement() {
+        let buf: Buffer;
+
+        if (!opt3001Initialized) {
+            buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
+            pins.i2cWriteBuffer(luxAddress, buf); //Init
+            basic.pause(50);
+            opt3001Initialized = true;
+        }
+
+        control.inBackground(function () {
+            let lux_status: number;
+
+            while (true) {
+                buf = pins.createBufferFromArray([0x01, 0xca, 0x10]);
+                pins.i2cWriteBuffer(luxAddress, buf);
+                basic.pause(1000);
+
+                buf = pins.createBufferFromArray([0x01]);
+                pins.i2cWriteBuffer(luxAddress, buf);
+
+                lux_status = pins.i2cReadNumber(luxAddress, NumberFormat.UInt16BE);
+                serial.writeLine("Lux status: " + lux_status);
+                if ((lux_status & 0x0680) == 0x0080) {
+
+                    buf = pins.createBufferFromArray([0x00]);
+                    pins.i2cWriteBuffer(luxAddress, buf);
+
+                    let raw: number = pins.i2cReadNumber(luxAddress, NumberFormat.UInt16BE);
+
+                    let exponent: number = raw >> 12;
+
+                    let fractResult: number = raw & 0xfff;
+
+                    let shiftedExponent: number = 1 << exponent;
+
+                    let lux: number = 0.01 * shiftedExponent * fractResult;
+                    lightIntensity = lux;
+                    basic.pause(3000);
+
+                }
+            }
+        })
+    }
+
+    function startTempMeasurement()
+    {
+        tempInitialized = true;
+        let temp;
+        let tmp112;
+        control.inBackground(function () {
+            let buf: Buffer;
+            while(true)
+            {
+                buf = pins.createBufferFromArray([0x01, 0x80]);
+                pins.i2cWriteBuffer(tempAddress, buf);
+
+                buf.fill(0);
+                pins.i2cWriteBuffer(tempAddress, buf);
+
+                temp = pins.i2cReadBuffer(tempAddress, 2);
+                tmp112 = temp[0] + (temp[1] / 100)
+
+                serial.writeLine("TEMP");
+                serial.writeNumber(tmp112);
+                temperature = tmp112;
+                basic.pause(2000);
+            }
+        })
+    }
+
+    function startHumidityMeasurement() {
+        humidityInititialized = true;
+        control.inBackground(function () {
+            let buf: Buffer;
+            while(true)
+            {
+                buf = pins.createBufferFromArray([0xfe]);
+                pins.i2cWriteBuffer(humidityAddress, buf);
+                basic.pause(20);
+
+                buf = pins.createBufferFromArray([0xf5]);
+                pins.i2cWriteBuffer(humidityAddress, buf);
+                basic.pause(50);
+
+                let hum_sht = pins.i2cReadBuffer(humidityAddress, 2);
+
+                serial.writeLine('humidity')
+                let hum_sht_raw = ((hum_sht[0]) * 256) + (hum_sht[1])
+                let hum_sht_per = -6 + 125 * hum_sht_raw / 65536
+                serial.writeNumber(hum_sht_per);
+
+                serial.writeLine(" ");
+                humidity = hum_sht_per;
+                basic.pause(2000);
+            }
+        })
+        
+    }
+
+    function tca9534aInit(i2cAddress: number) {
         if (!tca9534aInitialized) {
             let buf: Buffer = pins.createBufferFromArray([0x03]);
             let returnVal: number;
 
-            returnVal = readNumberFromI2C(59, buf, NumberFormat.UInt8BE);
+            returnVal = readNumberFromI2C(i2cAddress, buf, NumberFormat.UInt8BE);
 
             buf = pins.createBufferFromArray([0x01]);
-            returnVal = readNumberFromI2C(59, buf, NumberFormat.UInt8BE);
-
-
-            tca9534aWritePort(((1 << 6) | (1 << 4)));
-
-            tca9534aSetPortDirection(0x00);
+            returnVal = readNumberFromI2C(i2cAddress, buf, NumberFormat.UInt8BE);
 
             tca9534aInitialized = true;
         }
