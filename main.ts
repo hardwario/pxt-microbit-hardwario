@@ -41,18 +41,19 @@ namespace hardwario {
     let sgp30Initialized: boolean = false;
 
 
-    let temp = 0;
+    let temperatureVar = 0;
     let humidityVar = 0;
     let lightIntensityVar = 0;
     let pressureVar = 0;
     let altitudeVar = 0;
+    let tvocVar = 0;
 
 
     /**
     * Reads the current value of light intensity from the sensor
 	    * Returns light intensity in lux. 
     */
-    //%block="lightIntensity"
+    //%block="light intensity"
     export function lightIntensity(): number {
         if (!opt3001Initialized) {
             startLightMeasurement();
@@ -60,7 +61,7 @@ namespace hardwario {
         return Math.trunc(lightIntensityVar);
     }
     //%block="CO2"
-    export function CO2() {
+    export function CO2(): number {
         let buf: Buffer;
         tca9534aInit(0x38);
         tca9534aWritePort(0x00);
@@ -94,7 +95,7 @@ namespace hardwario {
             value = ((port >> 7) & 0x01);
             serial.writeLine("VALUE: " + value);
         }
-
+        return 1;
 
     }
     /**
@@ -106,7 +107,7 @@ namespace hardwario {
         if (!tempInitialized) {
             startTempMeasurement();
         }
-        return Math.trunc(temp);
+        return Math.trunc(temperatureVar);
 
     }
 
@@ -289,49 +290,16 @@ namespace hardwario {
         basic.pause(3000);
     }
     //%block="VOC"
-    export function VOC() : number {
-        let buf: Buffer;
-        let outBuf: Buffer
+    export function VOC(): number {
         if (!sgp30Initialized) {
-            buf = pins.createBufferFromArray([0x20, 0x2f]);
-            outBuf = readBufferFromI2C(sgp30Address, buf, 3);
-
-            buf = pins.createBufferFromArray([0x20, 0x03]);
-            pins.i2cWriteBuffer(sgp30Address, buf);
-
-            sgp30Initialized = true;
+            startVOCMeasurement();
         }
-
-        let crcBuf: number[] = [0 >> 8, 0];
-        let crc = sgp30CalculateCrc(crcBuf, 2);
-
-        buf = pins.createBufferFromArray([0x20, 0x61, 0 >> 8, 0, crc]);
-        pins.i2cWriteBuffer(sgp30Address, buf);
-        basic.pause(30);
-
-        buf = pins.createBufferFromArray([0x20, 0x08]);
-        pins.i2cWriteBuffer(sgp30Address, buf);
-        basic.pause(30);
-
-        outBuf = pins.i2cReadBuffer(sgp30Address, 6);
-        serial.writeLine("outBuf[0]: " + outBuf[0]);
-        serial.writeLine("outBuf[1]: " + outBuf[1]);
-        serial.writeLine("outBuf[2]: " + outBuf[2]);
-        serial.writeLine("outBuf[3]: " + outBuf[3]);
-        serial.writeLine("outBuf[4]: " + outBuf[4]);
-        serial.writeLine("outBuf[5]: " + outBuf[5]);
-
-        let co2eq = (outBuf[0] << 8) | outBuf[1];
-        let tvoc = (outBuf[3] << 8) | outBuf[4];
-
-        serial.writeLine("co2eq[4]: " + co2eq);
-        serial.writeLine("tvoc[5]: " + tvoc);
-
-        return tvoc;
+        return Math.trunc(tvocVar);
 
     }
+    /*
     //%block="motionDetectorTask $pin"
-    /*export function motionDetectorTask(pin: DigitalPin) {
+    export function motionDetectorTask(pin: DigitalPin) {
         serial.writeLine("START");
         basic.forever(function () {
             while (true) {
@@ -452,6 +420,44 @@ namespace hardwario {
         b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
 
         return b;
+    }
+
+    function startVOCMeasurement() {
+        let buf: Buffer;
+        let outBuf: Buffer
+
+        if (!sgp30Initialized) {
+            buf = pins.createBufferFromArray([0x20, 0x2f]);
+            outBuf = readBufferFromI2C(sgp30Address, buf, 3);
+
+            buf = pins.createBufferFromArray([0x20, 0x03]);
+            pins.i2cWriteBuffer(sgp30Address, buf);
+
+            sgp30Initialized = true;
+        }
+
+        control.inBackground(function () {
+            while (true) {
+                let crcBuf: number[] = [0 >> 8, 0];
+                let crc = sgp30CalculateCrc(crcBuf, 2);
+
+                buf = pins.createBufferFromArray([0x20, 0x61, 0 >> 8, 0, crc]);
+                pins.i2cWriteBuffer(sgp30Address, buf);
+                basic.pause(30);
+
+                buf = pins.createBufferFromArray([0x20, 0x08]);
+                pins.i2cWriteBuffer(sgp30Address, buf);
+                basic.pause(30);
+
+                outBuf = pins.i2cReadBuffer(sgp30Address, 6);
+
+                let co2eq = (outBuf[0] << 8) | outBuf[1];
+                let tvoc = (outBuf[3] << 8) | outBuf[4];
+
+                tvocVar = tvoc;
+                basic.pause(3000);
+            }
+        })
     }
 
     function startLightMeasurement() {
