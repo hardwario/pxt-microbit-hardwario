@@ -26,6 +26,7 @@ const tempAddress = 72;
 const humidityAddress = 64;
 const barometerAddress = 96;
 const tca9534aAddress = 59;
+const sgp30Address = 88;
 
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
 namespace hardwario {
@@ -37,40 +38,75 @@ namespace hardwario {
     let mpl3115a2Initialized: boolean = false;
     let motionInit: boolean = false;
     let relayInit: boolean = false;
+    let sgp30Initialized: boolean = false;
 
 
-    let temperature = 0;
-    let humidity = 0;
-    let lightIntensity = 0;
-    let pressure = 0;
-    let altitude = 0;
+    let temp = 0;
+    let humidityVar = 0;
+    let lightIntensityVar = 0;
+    let pressureVar = 0;
+    let altitudeVar = 0;
 
 
     /**
     * Reads the current value of light intensity from the sensor
 	    * Returns light intensity in lux. 
     */
-    //%block="getLight"
-    export function getLight(): number {
+    //%block="lightIntensity"
+    export function lightIntensity(): number {
         if (!opt3001Initialized) {
             startLightMeasurement();
         }
-        return Math.trunc(lightIntensity);
+        return Math.trunc(lightIntensityVar);
     }
-    //%block="getCO2"
-    export function getCO2(): number {
-        return 0;
+    //%block="CO2"
+    export function CO2() {
+        let buf: Buffer;
+        tca9534aInit(0x38);
+        tca9534aWritePort(0x00);
+        tca9534aSetPortDirection((~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
+
+        for (let i = 0; i < 100; i++) {
+            continue;
+        }
+
+        tca9534aSetPortDirection((~(1 << 0) & ~(1 << 4)));
+
+        for (let i = 0; i < 1000; i++) {
+            continue;
+        }
+        sc16is740Init(0x4d);
+
+        moduleCo2ChargeEnable(true);
+        basic.pause(60000);
+
+        moduleCo2ChargeEnable(false);
+
+        moduleCo2DeviceEnable(true);
+
+        basic.pause(140);
+        let value = 50;
+        while (value != 0) {
+            buf = pins.createBufferFromArray([0x00])
+
+            let port = readNumberFromI2C(0x38, buf, NumberFormat.Int8LE);
+
+            value = ((port >> 7) & 0x01);
+            serial.writeLine("VALUE: " + value);
+        }
+
+
     }
     /**
     * Reads the current value of temperature from the sensor
 	    * Returns temperature in celsius. 
     */
-    //%block="getTemperature"
-    export function getTemperature(): number {
+    //%block="temperature"
+    export function temperature(): number {
         if (!tempInitialized) {
             startTempMeasurement();
         }
-        return Math.trunc(temperature);
+        return Math.trunc(temp);
 
     }
 
@@ -78,20 +114,20 @@ namespace hardwario {
     * Reads the current value of humidity from the sensor
 	    * Returns relative humidity in percent. 
     */
-    //%block="getHumidity"
-    export function getHumidity(): number {
+    //%block="humidity"
+    export function humidity(): number {
 
         if (!humidityInititialized) {
             startHumidityMeasurement();
         }
-        return Math.trunc(humidity);
+        return Math.trunc(humidityVar);
     }
     /**
     * Reads the current altitude from the barometer sensor
 	    * Returns meters above sea level.
     */
-    //%block="getAltitude"
-    export function getAltitude(): number {
+    //%block="altitude"
+    export function altitude(): number {
         let buf: Buffer;
         if (!mpl3115a2Initialized) {
             buf = pins.createBufferFromArray([0x26, 0x04]);
@@ -145,8 +181,8 @@ namespace hardwario {
     * Reads the current atmospheric pressure from the barometer sensor
 	    * Returns atmospheric pressure in pascals.
     */
-    //%block="getPressure"
-    export function getPressure(): number {
+    //%block="pressure"
+    export function pressure(): number {
 
         let buf: Buffer;
 
@@ -229,10 +265,9 @@ namespace hardwario {
     * standard(4 batteries) or mini(2 batteries) version of the Module
     */
     //%block="voltage on $type | battery module"
-    export function getBatteryVoltage(type: BatteryModuleType): number {
+    export function batteryVoltage(type: BatteryModuleType): number {
 
-        if(type == BatteryModuleType.Mini)
-        {
+        if (type == BatteryModuleType.Mini) {
             pins.digitalWritePin(DigitalPin.P1, 0);
             basic.pause(100);
 
@@ -242,8 +277,7 @@ namespace hardwario {
             serial.writeLine("RESULT: " + 3 / 1024 * result / 0.33);
             return (3 / 1024 * result / 0.33) + 0.1;
         }
-        else
-        {
+        else {
             pins.digitalWritePin(DigitalPin.P1, 1);
             basic.pause(100);
 
@@ -254,12 +288,50 @@ namespace hardwario {
         }
         basic.pause(3000);
     }
-    //%block="getVOC"
-    export function getVOC() {
+    //%block="VOC"
+    export function VOC() : number {
+        let buf: Buffer;
+        let outBuf: Buffer
+        if (!sgp30Initialized) {
+            buf = pins.createBufferFromArray([0x20, 0x2f]);
+            outBuf = readBufferFromI2C(sgp30Address, buf, 3);
+
+            buf = pins.createBufferFromArray([0x20, 0x03]);
+            pins.i2cWriteBuffer(sgp30Address, buf);
+
+            sgp30Initialized = true;
+        }
+
+        let crcBuf: number[] = [0 >> 8, 0];
+        let crc = sgp30CalculateCrc(crcBuf, 2);
+
+        buf = pins.createBufferFromArray([0x20, 0x61, 0 >> 8, 0, crc]);
+        pins.i2cWriteBuffer(sgp30Address, buf);
+        basic.pause(30);
+
+        buf = pins.createBufferFromArray([0x20, 0x08]);
+        pins.i2cWriteBuffer(sgp30Address, buf);
+        basic.pause(30);
+
+        outBuf = pins.i2cReadBuffer(sgp30Address, 6);
+        serial.writeLine("outBuf[0]: " + outBuf[0]);
+        serial.writeLine("outBuf[1]: " + outBuf[1]);
+        serial.writeLine("outBuf[2]: " + outBuf[2]);
+        serial.writeLine("outBuf[3]: " + outBuf[3]);
+        serial.writeLine("outBuf[4]: " + outBuf[4]);
+        serial.writeLine("outBuf[5]: " + outBuf[5]);
+
+        let co2eq = (outBuf[0] << 8) | outBuf[1];
+        let tvoc = (outBuf[3] << 8) | outBuf[4];
+
+        serial.writeLine("co2eq[4]: " + co2eq);
+        serial.writeLine("tvoc[5]: " + tvoc);
+
+        return tvoc;
 
     }
     //%block="motionDetectorTask $pin"
-    export function motionDetectorTask(pin: DigitalPin) {
+    /*export function motionDetectorTask(pin: DigitalPin) {
         serial.writeLine("START");
         basic.forever(function () {
             while (true) {
@@ -286,7 +358,7 @@ namespace hardwario {
                 basic.pause(100);
             }
         })
-    }
+    }*/
 
     export function lcd() {
         tca9534aInit(60);
@@ -295,13 +367,86 @@ namespace hardwario {
         pins.spiFrequency(1000000);
         pins.spiFormat(8, 3);
 
+        245, 7, 1
+
+        let port = 245;
+        port &= ~(1 << 7);
+        port |= 1 << 7;
+
+        i2cMemoryWrite(0, 0x01, port);
+
+
+
     }
 
     /**
      * Helper functions
      */
 
-    function bc_ls013b7dh03_reverse(b: number): number {
+
+    function sc16is740Init(address: number) {
+        i2cMemoryWrite(address, 0x03 << 3, 0x80);
+
+        i2cMemoryWrite(address, 0x00 << 3, 0x58);
+
+        i2cMemoryWrite(address, 0x01 << 3, 0x00);
+
+        i2cMemoryWrite(address, 0x03 << 3, 0xbf);
+
+        i2cMemoryWrite(address, 0x02 << 3, 0x10);
+
+        i2cMemoryWrite(address, 0x03 << 3, 0x07);
+
+        i2cMemoryWrite(address, 0x02 << 3, 0x07);
+
+        i2cMemoryWrite(address, 0x01 << 3, 0x11);
+    }
+
+    function moduleCo2DeviceEnable(state: boolean) {
+        let direction: number = (~(1 << 0) & ~(1 << 4));
+
+        if (state) {
+            direction &= (~(1 << 2)) & (~(1 << 1)) & (~(1 << 3));
+        }
+
+        tca9534aSetPortDirection(direction);
+    }
+
+    function moduleCo2ChargeEnable(state: boolean) {
+        let direction: number = (~(1 << 0) & ~(1 << 4));
+
+        if (state) {
+            direction &= (~(1 << 2)) & (~(1 << 1));
+        }
+
+        return tca9534aSetPortDirection(direction);
+    }
+
+    function i2cMemoryWrite(address: number, regAddress: number, data: number) {
+        let buf: Buffer = pins.createBufferFromArray([regAddress, data]);
+        pins.i2cWriteBuffer(address, buf);
+    }
+
+    function sgp30CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
+        let crc: number = 0xff;
+
+        for (let i = 0; i < length; i++) {
+            crc ^= buffer[i];
+
+            for (let j = 0; j < 8; j++) {
+                if ((crc & 0x80) != 0) {
+                    crc = (crc << 1) ^ 0x31;
+                }
+                else {
+                    crc <<= 1;
+                }
+            }
+        }
+
+        return crc;
+    }
+
+    function bcLs013b7dh03Reverse(b: number): number {
         b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
         b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
         b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
@@ -346,7 +491,7 @@ namespace hardwario {
                     let shiftedExponent: number = 1 << exponent;
 
                     let lux: number = 0.01 * shiftedExponent * fractResult;
-                    lightIntensity = lux;
+                    lightIntensityVar = lux;
                     basic.pause(3000);
 
                 }
@@ -372,7 +517,7 @@ namespace hardwario {
 
                 serial.writeLine("TEMP");
                 serial.writeNumber(tmp112);
-                temperature = tmp112;
+                temp = tmp112;
                 basic.pause(2000);
             }
         })
@@ -399,7 +544,7 @@ namespace hardwario {
                 serial.writeNumber(hum_sht_per);
 
                 serial.writeLine(" ");
-                humidity = hum_sht_per;
+                humidityVar = hum_sht_per;
                 basic.pause(2000);
             }
         })
