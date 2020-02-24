@@ -64,18 +64,14 @@ namespace hardwario {
     export function CO2(): number {
         let buf: Buffer;
         tca9534aInit(0x38);
-        tca9534aWritePort(0x00);
-        tca9534aSetPortDirection((~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
+        tca9534aWritePort(0x38, 0x00);
+        tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
 
-        for (let i = 0; i < 100; i++) {
-            continue;
-        }
+        basic.pause(1);
 
-        tca9534aSetPortDirection((~(1 << 0) & ~(1 << 4)));
+        tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)));
 
-        for (let i = 0; i < 1000; i++) {
-            continue;
-        }
+        basic.pause(1);
         sc16is740Init(0x4d);
 
         moduleCo2ChargeEnable(true);
@@ -94,6 +90,7 @@ namespace hardwario {
 
             value = ((port >> 7) & 0x01);
             serial.writeLine("VALUE: " + value);
+            basic.pause(10);
         }
         return 1;
 
@@ -244,21 +241,21 @@ namespace hardwario {
         if (!relayInit) {
             tca9534aInit(59);
 
-            tca9534aWritePort(((1 << 6) | (1 << 4)));
+            tca9534aWritePort(59, ((1 << 6) | (1 << 4)));
 
-            tca9534aSetPortDirection(0x00);
+            tca9534aSetPortDirection(59, 0x00);
 
             relayInit = true;
         }
 
         if (state == RelayState.On) {
-            tca9534aWritePort(((1 << 4) | (1 << 5)));
+            tca9534aWritePort(59, ((1 << 4) | (1 << 5)));
         }
         else {
-            tca9534aWritePort(((1 << 6) | (1 << 7)));
+            tca9534aWritePort(59, ((1 << 6) | (1 << 7)));
         }
         basic.pause(50);
-        tca9534aWritePort(0);
+        tca9534aWritePort(59, 0);
 
     }
     /**
@@ -284,8 +281,8 @@ namespace hardwario {
 
             let result: number = pins.analogReadPin(AnalogPin.P0);
 
-            pins.digitalWritePin(DigitalPin.P1, 1);
-            return result;
+            pins.digitalWritePin(DigitalPin.P1, 0);
+            return 3 / 1024 * result / 0.13;
         }
         basic.pause(3000);
     }
@@ -330,8 +327,8 @@ namespace hardwario {
 
     export function lcd() {
         tca9534aInit(60);
-        tca9534aWritePort(((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
-        tca9534aSetPortDirection((1 << 1) | (1 << 3));
+        /*tca9534aWritePort(((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
+        tca9534aSetPortDirection((1 << 1) | (1 << 3));*/
         pins.spiFrequency(1000000);
         pins.spiFormat(8, 3);
 
@@ -377,7 +374,7 @@ namespace hardwario {
             direction &= (~(1 << 2)) & (~(1 << 1)) & (~(1 << 3));
         }
 
-        tca9534aSetPortDirection(direction);
+        tca9534aSetPortDirection(0x38, direction);
     }
 
     function moduleCo2ChargeEnable(state: boolean) {
@@ -387,7 +384,7 @@ namespace hardwario {
             direction &= (~(1 << 2)) & (~(1 << 1));
         }
 
-        return tca9534aSetPortDirection(direction);
+        return tca9534aSetPortDirection(0x38, direction);
     }
 
     function i2cMemoryWrite(address: number, regAddress: number, data: number) {
@@ -571,18 +568,18 @@ namespace hardwario {
         }
     }
 
-    function tca9534aWritePort(value: NumberFormat.UInt8BE) {
+    function tca9534aWritePort(address: number, value: NumberFormat.UInt8BE) {
         let buf: Buffer = pins.createBufferFromArray([0x01, value]);
         let returnVal: number;
 
-        returnVal = readNumberFromI2C(59, buf, NumberFormat.UInt8BE);
+        returnVal = readNumberFromI2C(address, buf, NumberFormat.UInt8BE);
 
     }
 
-    function tca9534aSetPortDirection(direction: NumberFormat.UInt8BE) {
+    function tca9534aSetPortDirection(address: number, direction: NumberFormat.UInt8BE) {
         let buf: Buffer = pins.createBufferFromArray([0x03, direction]);
         let returnVal: number;
-        returnVal = readNumberFromI2C(59, buf, NumberFormat.UInt8BE);
+        returnVal = readNumberFromI2C(address, buf, NumberFormat.UInt8BE);
     }
 
     function readNumberFromI2C(address: number, buffer: Buffer, format: NumberFormat): number {
