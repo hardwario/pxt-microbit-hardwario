@@ -61,12 +61,13 @@ namespace hardwario {
         return Math.trunc(lightIntensityVar);
     }
     //%block="CO2"
-    export function CO2(): number {
+    export function CO2() {
+        serial.writeLine("START");
         let buf: Buffer;
         tca9534aInit(0x38);
         tca9534aWritePort(0x38, 0x00);
         tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
-
+        serial.writeLine("INIT");
         basic.pause(1);
 
         tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)));
@@ -75,14 +76,16 @@ namespace hardwario {
         sc16is740Init(0x4d);
 
         moduleCo2ChargeEnable(true);
+        serial.writeLine("CHARGE");
         basic.pause(60000);
-
+        serial.writeLine("AFTER CHARGE");
         moduleCo2ChargeEnable(false);
 
         moduleCo2DeviceEnable(true);
 
         basic.pause(140);
         let value = 50;
+        serial.writeLine("CYKLUS");
         while (value != 0) {
             buf = pins.createBufferFromArray([0x00])
 
@@ -92,8 +95,6 @@ namespace hardwario {
             serial.writeLine("VALUE: " + value);
             basic.pause(10);
         }
-        return 1;
-
     }
     /**
     * Reads the current value of temperature from the sensor
