@@ -71,12 +71,14 @@ namespace hardwario {
 
         let length: number = 8;
 
+    export function CO2() {
         let buf: Buffer;
         /**INIT */
 
         tca9534aInit(0x38);
         tca9534aWritePort(0x38, 0x00);
         tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
+      
         basic.pause(1);
 
         tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)));
@@ -86,8 +88,9 @@ namespace hardwario {
 
         /**CHARGE */
         moduleCo2ChargeEnable(true);
+        serial.writeLine("CHARGE");
         basic.pause(60000);
-
+        serial.writeLine("AFTER CHARGE");
         moduleCo2ChargeEnable(false);
 
         while (true) {
@@ -98,9 +101,12 @@ namespace hardwario {
             /**BOOT */
             while (value != 0) {
                 buf = pins.createBufferFromArray([0x00])
-
+        basic.pause(140);
+        let value = 50;
+        serial.writeLine("CYKLUS");
+        while (value != 0) {
+            buf = pins.createBufferFromArray([0x00])
                 let port = i2cReadNumber(0x38, buf);
-
                 value = ((port >> 7) & 0x01);
 
                 basic.pause(10);
@@ -235,6 +241,10 @@ namespace hardwario {
             return concentration;
 
             basic.pause(3000);
+
+            value = ((port >> 7) & 0x01);
+            serial.writeLine("VALUE: " + value);
+            basic.pause(10);
         }
     }
     /**
