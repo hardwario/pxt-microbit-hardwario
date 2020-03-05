@@ -27,6 +27,8 @@ const humidityAddress = 64;
 const barometerAddress = 96;
 const tca9534aAddress = 59;
 const sgp30Address = 88;
+const co2Address = 56;
+const sc16is740Address = 77;
 
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
 namespace hardwario {
@@ -62,38 +64,178 @@ namespace hardwario {
     }
     //%block="CO2"
     export function CO2(): number {
+        let co2Pressure = 10124;
+        let sensorState: Buffer = pins.createBuffer(23);
+
+        let firstMeasurementDone = false;
+
+        let length: number = 8;
+
         let buf: Buffer;
+        /**INIT */
+
         tca9534aInit(0x38);
         tca9534aWritePort(0x38, 0x00);
         tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
-
         basic.pause(1);
 
         tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)));
 
         basic.pause(1);
-        sc16is740Init(0x4d);
+        sc16is740Init(sc16is740Address);
 
+        /**CHARGE */
         moduleCo2ChargeEnable(true);
         basic.pause(60000);
 
         moduleCo2ChargeEnable(false);
 
-        moduleCo2DeviceEnable(true);
+        while (true) {
+            moduleCo2DeviceEnable(true);
 
-        basic.pause(140);
-        let value = 50;
-        while (value != 0) {
-            buf = pins.createBufferFromArray([0x00])
+            basic.pause(140);
+            let value = 50;
+            /**BOOT */
+            while (value != 0) {
+                buf = pins.createBufferFromArray([0x00])
 
-            let port = readNumberFromI2C(0x38, buf, NumberFormat.Int8LE);
+                let port = i2cReadNumber(0x38, buf);
 
-            value = ((port >> 7) & 0x01);
-            serial.writeLine("VALUE: " + value);
-            basic.pause(10);
+                value = ((port >> 7) & 0x01);
+
+                basic.pause(10);
+            }
+
+
+            if (!firstMeasurementDone) {
+                buf = pins.createBufferFromArray([0x00, 0xfe, 0x41, 0x00, 0x80, 0x01, 0x10, 0x28, 0x7e]);
+                length = 8;
+                serial.writeLine("FIRST");
+            }
+            else {
+                buf = pins.createBuffer(34);
+                buf.fill(0);
+                buf[0] = 0xfe;
+                buf[1] = 0x41;
+                buf[2] = 0x00;
+                buf[3] = 0x80;
+                buf[4] = 0x1a;
+                buf[5] = 0x20;
+
+                for (let i = 0; i < 23; i++) {
+                    buf[i + 6] = sensorState[i];
+                }
+                buf[29] = co2Pressure >> 8;
+                buf[30] = co2Pressure;
+
+                let crc16 = lp8CalculateCrc16(buf, 31);
+
+                buf[31] = crc16;
+                buf[32] = crc16 >> 8;
+
+                buf.shift(-1);
+
+                buf[0] = 0x00;
+
+                length = 33;
+
+            }
+            moduleCo2UartEnable(true);
+            pins.i2cWriteBuffer(sc16is740Address, buf);
+            basic.pause(120);
+
+            /**BOOT READ */
+
+            buf = pins.createBufferFromArray([0x09 << 3]);
+
+            let spacesAvaliable = i2cReadNumber(sc16is740Address, buf);
+
+            pins.i2cWriteNumber(sc16is740Address, 0x00, NumberFormat.Int8LE);
+
+            let readBuf: Buffer = pins.i2cReadBuffer(sc16is740Address, 4);
+
+            if (readBuf[0] != 0xfe) {
+                serial.writeLine("0 ERROR");
+                return -1;
+            }
+            if (readBuf[1] != 0x41) {
+                serial.writeLine("1 ERROR");
+
+                return -1;
+            }
+            if (lp8CalculateCrc16(readBuf, 4) != 0) {
+                serial.writeLine("CRC ERROR");
+                return -1;
+            }
+            basic.pause(70);
+
+            /**MEASURE */
+            value = 50;
+            while (value == 0) {
+                buf = pins.createBufferFromArray([0x00])
+
+                let port = i2cReadNumber(0x38, buf);
+
+                value = ((port >> 7) & 0x01);
+                serial.writeLine("VALUE DRUHA: " + value);
+                basic.pause(10);
+            }
+
+
+            buf = pins.createBufferFromArray([0x00, 0xfe, 0x44, 0x00, 0x80, 0x2c, 0x79, 0x39]);
+
+            moduleCo2UartEnable(true);
+            pins.i2cWriteBuffer(sc16is740Address, buf);
+            basic.pause(120);
+
+            /**MEASURE READ */
+            buf = pins.createBufferFromArray([0x09 << 3]);
+
+            spacesAvaliable = i2cReadNumber(sc16is740Address, buf);
+
+            pins.i2cWriteNumber(sc16is740Address, 0x00, NumberFormat.Int8LE);
+
+            readBuf = pins.i2cReadBuffer(sc16is740Address, 49);
+
+            moduleCo2UartEnable(false);
+
+            moduleCo2DeviceEnable(false);
+
+            if (readBuf[0] != 0xfe) {
+                return -1;
+            }
+
+            if (readBuf[1] != 0x44) {
+                return -1;
+            }
+
+            if (lp8CalculateCrc16(readBuf, 49) != 0) {
+                return -1;
+            }
+            if ((readBuf[3 + 0xa7 - 0x80] & 0xdd) != 0) {
+                return -1;
+            }
+
+            if ((readBuf[3 + 0xa6 - 0x80] & 0xf7) != 0) {
+                return -1;
+            }
+
+            for (let i = 0; i < 23; i++) {
+                sensorState[i] = readBuf[i + 4];
+            }
+
+            firstMeasurementDone = true;
+
+            let concentration = readBuf[3 + 0x9a - 0x80] << 8;
+            concentration |= readBuf[(3 + 0x9a - 0x80) + 1];
+
+            serial.writeLine("CO2");
+            serial.writeNumber(concentration);
+
+            return concentration;
+
+            basic.pause(3000);
         }
-        return 1;
-
     }
     /**
     * Reads the current value of temperature from the sensor
@@ -204,13 +346,13 @@ namespace hardwario {
         buf.fill(0);
         pins.i2cWriteBuffer(barometerAddress, buf);
 
-        let pre_status = readNumberFromI2C(barometerAddress, buf, NumberFormat.Int8LE)
+        let pre_status = i2cReadNumber(barometerAddress, buf)
         pins.i2cReadNumber(barometerAddress, 1);
 
         if (pre_status == 0x0e) {
             buf = pins.createBufferFromArray([0x01]);
 
-            let resultBuf: Buffer = readBufferFromI2C(barometerAddress, buf, 5);
+            let resultBuf: Buffer = i2cReadBuffer(barometerAddress, buf, 5);
 
             let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
 
@@ -327,12 +469,10 @@ namespace hardwario {
 
     export function lcd() {
         tca9534aInit(60);
-        /*tca9534aWritePort(((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
-        tca9534aSetPortDirection((1 << 1) | (1 << 3));*/
+        tca9534aWritePort(60, ((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
+        tca9534aSetPortDirection(60, (1 << 1) | (1 << 3));
         pins.spiFrequency(1000000);
         pins.spiFormat(8, 3);
-
-        245, 7, 1
 
         let port = 245;
         port &= ~(1 << 7);
@@ -348,6 +488,57 @@ namespace hardwario {
      * Helper functions
      */
 
+    function sc16is740ResetFifo(fifo: number) {
+        let register_fcr: number;
+
+        register_fcr = fifo | 0x01;
+
+        i2cMemoryWrite(co2Address, 0x02 << 3, register_fcr);
+    }
+
+    function moduleCo2UartEnable(state: boolean) {
+        if (state) {
+            sc16is740ResetFifo(2);
+        }
+    }
+
+    function moduleCo2UartWrite(buf: Buffer, length: number) {
+        sca16is740Write(buf, length);
+    }
+
+    function moduleCo2UartRead(buf: Buffer, length: number) {
+        sc16is740Read(buf, length);
+    }
+
+    function sc16is740Read(buf: Buffer, length: number) {
+
+    }
+
+    function sca16is740Write(buf: Buffer, length: number) {
+        let spacesAvailable: number;
+        if (length > 64) {
+            return 0;
+        }
+
+        spacesAvailable = sc16is740GetSpacesAvailable();
+
+        if (spacesAvailable < length) {
+            return 0;
+        }
+        pins.i2cWriteBuffer(sc16is740Address, buf);
+
+        return length;
+    }
+
+    function sc16is740GetSpacesAvailable(): number {
+        //return i2c(sc16is740Address, 0x08 << 3, 0); 
+        return 64;
+    }
+
+
+    function moduleCo2Uartead() {
+
+    }
 
     function sc16is740Init(address: number) {
         i2cMemoryWrite(address, 0x03 << 3, 0x80);
@@ -392,6 +583,7 @@ namespace hardwario {
         pins.i2cWriteBuffer(address, buf);
     }
 
+
     function sgp30CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
         let crc: number = 0xff;
 
@@ -411,6 +603,27 @@ namespace hardwario {
         return crc;
     }
 
+    function lp8CalculateCrc16(buffer: Buffer, length: number): number {
+
+        let crc16: number = 0xffff;
+
+        for (let j = 0; j < length; j++) {
+            crc16 ^= buffer[j];
+
+            for (let i = 0; i < 8; i++) {
+                if ((crc16 & 1) != 0) {
+                    crc16 >>= 1;
+                    crc16 ^= 0xa001;
+                }
+                else {
+                    crc16 >>= 1;
+                }
+            }
+        }
+
+        return crc16;
+    }
+
     function bcLs013b7dh03Reverse(b: number): number {
         b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
         b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
@@ -425,7 +638,7 @@ namespace hardwario {
 
         if (!sgp30Initialized) {
             buf = pins.createBufferFromArray([0x20, 0x2f]);
-            outBuf = readBufferFromI2C(sgp30Address, buf, 3);
+            outBuf = i2cReadBuffer(sgp30Address, buf, 3);
 
             buf = pins.createBufferFromArray([0x20, 0x03]);
             pins.i2cWriteBuffer(sgp30Address, buf);
@@ -559,10 +772,10 @@ namespace hardwario {
             let buf: Buffer = pins.createBufferFromArray([0x03]);
             let returnVal: number;
 
-            returnVal = readNumberFromI2C(i2cAddress, buf, NumberFormat.UInt8BE);
+            returnVal = i2cReadNumber(i2cAddress, buf);
 
             buf = pins.createBufferFromArray([0x01]);
-            returnVal = readNumberFromI2C(i2cAddress, buf, NumberFormat.UInt8BE);
+            returnVal = i2cReadNumber(i2cAddress, buf);
 
             tca9534aInitialized = true;
         }
@@ -572,23 +785,23 @@ namespace hardwario {
         let buf: Buffer = pins.createBufferFromArray([0x01, value]);
         let returnVal: number;
 
-        returnVal = readNumberFromI2C(address, buf, NumberFormat.UInt8BE);
+        returnVal = i2cReadNumber(address, buf);
 
     }
 
     function tca9534aSetPortDirection(address: number, direction: NumberFormat.UInt8BE) {
         let buf: Buffer = pins.createBufferFromArray([0x03, direction]);
         let returnVal: number;
-        returnVal = readNumberFromI2C(address, buf, NumberFormat.UInt8BE);
+        returnVal = i2cReadNumber(address, buf);
     }
 
-    function readNumberFromI2C(address: number, buffer: Buffer, format: NumberFormat): number {
+    function i2cReadNumber(address: number, buffer: Buffer): number {
 
         pins.i2cWriteBuffer(address, buffer);
-        return pins.i2cReadNumber(address, format);
+        return pins.i2cReadNumber(address, NumberFormat.Int8BE);
     }
 
-    function readBufferFromI2C(address: number, buffer: Buffer, size: number): Buffer {
+    function i2cReadBuffer(address: number, buffer: Buffer, size: number): Buffer {
         pins.i2cWriteBuffer(address, buffer);
         return pins.i2cReadBuffer(address, size);
     }
