@@ -122,7 +122,7 @@ namespace luxTag {
     let opt3001Initialized: boolean = false;
     let illuminanceVar = 0;
 
-    export function getIlluminance() : number {
+    export function getIlluminance(): number {
         if (!opt3001Initialized) {
             startLightMeasurement();
         }
@@ -132,14 +132,16 @@ namespace luxTag {
     function startLightMeasurement() {
         let buf: Buffer;
 
-        if (!opt3001Initialized) {
-            buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
-            pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf);
-            basic.pause(50);
-            opt3001Initialized = true;
-        }
-
         control.inBackground(function () {
+            if (!opt3001Initialized) {
+                buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf) != 0) {
+                    return;
+                }
+                basic.pause(50);
+                opt3001Initialized = true;
+            }
+
             let lux_status: number;
 
             while (true) {
@@ -163,9 +165,130 @@ namespace luxTag {
                     let lux: number = 0.01 * shiftedExponent * fractResult;
 
                     illuminanceVar = lux;
+                    serial.writeLine("LUX: " + illuminanceVar);
 
                     basic.pause(2000);
 
+                }
+            }
+        })
+    }
+}
+
+
+/***  ____          _____   ____  __  __ ______ _______ ______ _____  ***/
+/*** |  _ \   /\   |  __ \ / __ \|  \/  |  ____|__   __|  ____|  __ \ ***/
+/*** | |_) | /  \  | |__) | |  | | \  / | |__     | |  | |__  | |__) |***/
+/*** |  _ < / /\ \ |  _  /| |  | | |\/| |  __|    | |  |  __| |  _  / ***/
+/*** | |_) / ____ \| | \ \| |__| | |  | | |____   | |  | |____| | \ \ ***/
+/*** |____/_/    \_\_|  \_\\____/|_|  |_|______|  |_|  |______|_|  \_\***/
+namespace barometerTag {
+
+    let mpl3115a2Initialized: boolean = false;
+    let pressureVar = 0;
+    let altitudeVar = 0;
+
+    export function getAltidude() {
+        if (!mpl3115a2Initialized) {
+            basic.pause(10);
+            startBarometerMeasurement();
+        }
+        return Math.trunc(altitudeVar);
+    }
+
+    export function getPressure() {
+        if (!mpl3115a2Initialized) {
+            startBarometerMeasurement();
+        }
+        return Math.trunc(pressureVar);
+    }
+
+    function startBarometerMeasurement() {
+
+        let buf: Buffer;
+
+        control.inBackground(function () {
+
+            if (!mpl3115a2Initialized) {
+                buf = pins.createBufferFromArray([0x26, 0x04]);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf) != 0) {
+                    return;
+                }
+                basic.pause(1500);
+                mpl3115a2Initialized = true;
+            }
+
+            while (true) {
+                //PRESSURE
+                buf = pins.createBufferFromArray([0x26, 0x38]);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf) != 0) {
+                    return;
+                }
+
+                buf = pins.createBufferFromArray([0x13, 0x07]);
+                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+
+                buf = pins.createBufferFromArray([0x26, 0x3a]);
+                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                basic.pause(1500);
+
+                buf.fill(0);
+                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+
+                let pre_status = i2c.readNumber(I2C_ADDRESS_TAG_BAROMETER, buf)
+                pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
+
+                if (pre_status == 0x0e) {
+                    buf = pins.createBufferFromArray([0x01]);
+
+                    let resultBuf: Buffer = i2c.readBuffer(I2C_ADDRESS_TAG_BAROMETER, buf, 5);
+                    let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
+                    let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 8;
+                    let thirdParam: NumberFormat.UInt32BE = resultBuf[3];
+                    thirdParam = thirdParam << 8;
+
+                    let out_p: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
+                    let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
+
+                    pressureVar = pascal;
+                    serial.writeLine("PRESSURE: " + pressureVar);
+
+                    basic.pause(20);
+
+                    //ALTITUDE
+                    buf = pins.createBufferFromArray([0x26, 0xb8]);
+                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+
+                    buf = pins.createBufferFromArray([0x13, 0x07]);
+                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+
+                    buf = pins.createBufferFromArray([0x26, 0xba]);
+                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                    basic.pause(1500);
+
+                    buf.fill(0);
+                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+
+                    let alt_status = pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
+
+                    if (alt_status == 0x0e) {
+                        buf = pins.createBufferFromArray([0x01]);
+                        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+
+                        let resultBuf: Buffer = pins.i2cReadBuffer(I2C_ADDRESS_TAG_BAROMETER, 5);
+                        let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 24;
+                        let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 16;
+                        let thirdParam: NumberFormat.UInt32BE = (resultBuf[3] & 0xf0);
+                        thirdParam = thirdParam << 8;
+
+                        let out_pa: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
+                        let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
+                        altitudeVar = meter;
+
+                        serial.writeLine('ALTITUDE: ' + altitudeVar);
+                    }
+
+                    basic.pause(3000);
                 }
             }
         })
@@ -183,7 +306,7 @@ namespace vocTag {
     let sgp30Initialized: boolean = false;
     let tvocVar = 0;
 
-    export function getTVOC() : number {
+    export function getTVOC(): number {
         if (!sgp30Initialized) {
             startVOCMeasurement();
         }
@@ -194,23 +317,27 @@ namespace vocTag {
         let buf: Buffer;
         let outBuf: Buffer;
 
-        if (!sgp30Initialized) {
-            buf = pins.createBufferFromArray([0x20, 0x2f]);
-            outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, buf, 3);
-
-            buf = pins.createBufferFromArray([0x20, 0x03]);
-            pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf);
-
-            sgp30Initialized = true;
-        }
-
         control.inBackground(function () {
+            if (!sgp30Initialized) {
+                buf = pins.createBufferFromArray([0x20, 0x2f]);
+                outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, buf, 3);
+
+                buf = pins.createBufferFromArray([0x20, 0x03]);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                    sgp30Initialized = false;
+                    return;
+                }
+                sgp30Initialized = true;
+            }
+
             while (true) {
                 let crcBuf: number[] = [0 >> 8, 0];
                 let crc = sgp30CalculateCrc(crcBuf, 2);
 
                 buf = pins.createBufferFromArray([0x20, 0x61, 0x00, 0x00, crc]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                    return;
+                }
                 basic.pause(30);
 
                 buf = pins.createBufferFromArray([0x20, 0x08]);
@@ -223,7 +350,9 @@ namespace vocTag {
                 let tvoc = (outBuf[3] << 8) | outBuf[4];
 
                 tvocVar = tvoc;
-                basic.pause(3000);
+                serial.writeLine("VOC: " + tvocVar);
+
+                basic.pause(2000);
             }
         })
     }
@@ -253,13 +382,13 @@ namespace vocTag {
 /*** | |__| | |  | | \  / | | | | |  | || |    | |   \ \_/ / ***/
 /*** |  __  | |  | | |\/| | | | | |  | || |    | |    \   /  ***/
 /*** | |  | | |__| | |  | |_| |_| |__| || |_   | |     | |   ***/
-/*** |_|  |_|\____/|_|  |_|_____|_____/_____|  |_|     |_|   ***/                                            
+/*** |_|  |_|\____/|_|  |_|_____|_____/_____|  |_|     |_|   ***/
 namespace humidityTag {
 
     let humidityInititialized: boolean = false;
     let humidityVar = 0;
 
-    export function getHumidity() : number {
+    export function getHumidity(): number {
         if (!humidityInititialized) {
             startHumidityMeasurement();
         }
@@ -273,7 +402,10 @@ namespace humidityTag {
             let buf: Buffer;
             while (true) {
                 buf = pins.createBufferFromArray([0xfe]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_HUMIDITY, buf);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_HUMIDITY, buf) != 0) {
+                    humidityInititialized = false;
+                    return;
+                }
                 basic.pause(20);
 
                 buf = pins.createBufferFromArray([0xf5]);
@@ -287,6 +419,8 @@ namespace humidityTag {
                 serial.writeNumber(percentage);
 
                 humidityVar = percentage;
+
+                serial.writeLine("HUMIDITY: " + humidityVar);
 
                 /**TODO ADD DELAY CONSTANTS */
                 basic.pause(2000);
@@ -307,7 +441,7 @@ namespace temperatureTag {
     let temperatureInitialized: boolean = false;
     let temperatureVar = 0;
 
-    export function getTepmerature() : number {
+    export function getTepmerature(): number {
         if (!temperatureInitialized) {
             startTemperatureMeasurement();
         }
@@ -315,15 +449,21 @@ namespace temperatureTag {
     }
 
     function startTemperatureMeasurement() {
+
         temperatureInitialized = true;
+
         let t;
         let tmp112;
 
         control.inBackground(function () {
             let buf: Buffer;
+
             while (true) {
                 buf = pins.createBufferFromArray([0x01, 0x80]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_TEMPERATURE, buf);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_TEMPERATURE, buf) != 0) {
+                    temperatureInitialized = false;
+                    return;
+                }
 
                 buf.fill(0);
                 pins.i2cWriteBuffer(I2C_ADDRESS_TAG_TEMPERATURE, buf);
@@ -335,8 +475,59 @@ namespace temperatureTag {
                 serial.writeNumber(tmp112);
 
                 t = tmp112;
+                serial.writeLine("TEMP: " + t);
 
                 basic.pause(2000);
+            }
+        })
+    }
+}
+
+/***  ____       _______ _______ ______ _______     __***/
+/*** |  _ \   /\|__   __|__   __|  ____|  __ \ \   / /***/
+/*** | |_) | /  \  | |     | |  | |__  | |__) \ \_/ / ***/
+/*** |  _ < / /\ \ | |     | |  |  __| |  _  / \   /  ***/
+/*** | |_) / ____ \| |     | |  | |____| | \ \  | |   ***/
+/*** |____/_/    \_\_|     |_|  |______|_|  \_\ |_|   ***/
+namespace batteryModule {
+
+    let voltageMeasurementStarted: boolean = false;
+    let voltage = 0;
+
+    export function getVoltage(type: BatteryModuleType): number {
+
+        if (!voltageMeasurementStarted) {
+            startVoltageMeasurement(type);
+        }
+        return voltage;
+    }
+
+    function startVoltageMeasurement(type: BatteryModuleType) {
+
+        control.inBackground(function () {
+
+            while (true) {
+                if (type == BatteryModuleType.Mini) {
+                    pins.digitalWritePin(DigitalPin.P1, 0);
+                    basic.pause(100);
+
+                    let result: number = pins.analogReadPin(AnalogPin.P0);
+
+                    pins.analogWritePin(AnalogPin.P1, 1023);
+                    voltage = (3 / 1024 * result / 0.33) + 0.1;
+                    serial.writeLine("VOLTAGE: " + voltage);
+                }
+                else {
+                    pins.digitalWritePin(DigitalPin.P1, 1);
+                    basic.pause(100);
+
+                    let result: number = pins.analogReadPin(AnalogPin.P0);
+
+                    pins.digitalWritePin(DigitalPin.P1, 0);
+                    voltage = 3 / 1024 * result / 0.13;
+                }
+
+                basic.pause(3000);
             }
         })
     }
@@ -352,7 +543,7 @@ namespace co2Module {
     let co2Initialized: boolean = false;
     let co2ConcentrationVar = 0;
 
-    export function getCO2() : number {
+    export function getCO2(): number {
         if (!co2Initialized) {
             startCO2Measurement();
         }
@@ -368,25 +559,25 @@ namespace co2Module {
         let length: number = 8;
         let buf: Buffer;
         /**INIT */
-
-        helperFunctions.tca9534aInit(0x38);
-        helperFunctions.tca9534aWritePort(0x38, 0x00);
-        helperFunctions.tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
-
-        basic.pause(1);
-
-        helperFunctions.tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)));
-
-        basic.pause(1);
-
-        helperFunctions.sc16is740Init(I2C_ADDRESS_MODULE_CO2_FIFO);
-
-        /**CHARGE */
-        moduleCo2ChargeEnable(true);
-        basic.pause(60000);
-        moduleCo2ChargeEnable(false);
-
         control.inBackground(function () {
+
+            helperFunctions.tca9534aInit(0x38);
+            helperFunctions.tca9534aWritePort(0x38, 0x00);
+            helperFunctions.tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
+
+            basic.pause(1);
+
+            helperFunctions.tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)));
+
+            basic.pause(1);
+
+            helperFunctions.sc16is740Init(I2C_ADDRESS_MODULE_CO2_FIFO);
+
+            /**CHARGE */
+            moduleCo2ChargeEnable(true);
+            basic.pause(60000);
+            moduleCo2ChargeEnable(false);
+
             while (true) {
                 moduleCo2DeviceEnable(true);
 
@@ -502,6 +693,8 @@ namespace co2Module {
 
                 co2ConcentrationVar = concentration;
 
+                serial.writeLine("CO2: " + co2ConcentrationVar);
+
                 basic.pause(3000);
             }
         })
@@ -555,17 +748,11 @@ namespace co2Module {
 
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
 namespace hardwario {
-    let opt3001Initialized: boolean = false;
-    let mpl3115a2Initialized: boolean = false;
     let motionInit: boolean = false;
     let relayInit: boolean = false;
 
-    let pressureVar = 0;
-    let altitudeVar = 0;
-
-
     /**
-    * Reads the current value of light intensity from the sensor
+    * Reads the current value of light intensity from the sensor.
 	    * Returns illuminance in lux.
     */
     //%block="illuminance"
@@ -574,7 +761,7 @@ namespace hardwario {
     }
 
     /**
-    * Reads the current value of CO2 in air from the sensor on CO2 Module
+    * Reads the current value of CO2 in air from the sensor on CO2 Module.
 	    * Returns concentration of CO2 in air.
     */
     //%block="co2"
@@ -583,7 +770,7 @@ namespace hardwario {
     }
 
     /**
-    * Reads the current value of temperature from the sensor
+    * Reads the current value of temperature from the sensor.
 	    * Returns temperature in celsius. 
     */
     //%block="temperature"
@@ -592,128 +779,52 @@ namespace hardwario {
     }
 
     /**
-    * Reads the current value of humidity from the sensor
+    * Reads the current value of humidity from the sensor.
 	    * Returns relative humidity in percent. 
     */
     //%block="humidity"
     export function humidity(): number {
         return humidityTag.getHumidity();
     }
+
     /**
-    * Reads the current altitude from the barometer sensor
+    * Reads the current concentration of voc(volatile organic compound) in the air from the sensor.
+        * Returns total voc(tvoc) in the air in ppm.
+    */
+    //%block="voc"
+    export function voc(): number {
+        return vocTag.getTVOC();
+    }
+
+    /**
+    * Reads the current altitude from the barometer sensor.
 	    * Returns meters above sea level.
     */
     //%block="altitude"
     export function altitude(): number {
-        let buf: Buffer;
-        if (!mpl3115a2Initialized) {
-            buf = pins.createBufferFromArray([0x26, 0x04]);
-            pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-            basic.pause(1500);
-            mpl3115a2Initialized = true;
-        }
-
-        buf = pins.createBufferFromArray([0x26, 0xb8]);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-
-        buf = pins.createBufferFromArray([0x13, 0x07]);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-
-        buf = pins.createBufferFromArray([0x26, 0xba]);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-        basic.pause(1500);
-
-        buf.fill(0);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-
-        let alt_status = pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
-
-        serial.writeLine('altitude');
-        if (alt_status == 0x0e) {
-            buf = pins.createBufferFromArray([0x01]);
-            pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-
-            let resultBuf: Buffer = pins.i2cReadBuffer(I2C_ADDRESS_TAG_BAROMETER, 5);
-
-            let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 24;
-
-            let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 16;
-
-            let thirdParam: NumberFormat.UInt32BE = (resultBuf[3] & 0xf0);
-
-            thirdParam = thirdParam << 8;
-
-            let out_pa: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
-
-            let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
-
-            return Math.trunc(meter);
-
-        }
-        return -1;
-        serial.writeLine(" ");
-        basic.pause(2000);
+        return barometerTag.getAltidude();
     }
+
     /**
-    * Reads the current atmospheric pressure from the barometer sensor
+    * Reads the current atmospheric pressure from the barometer sensor.
 	    * Returns atmospheric pressure in pascals.
     */
     //%block="pressure"
     export function pressure(): number {
-
-        let buf: Buffer;
-
-        if (!mpl3115a2Initialized) {
-            buf = pins.createBufferFromArray([0x26, 0x04]);
-            pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-            basic.pause(1500);
-            mpl3115a2Initialized = true;
-        }
-
-        buf = pins.createBufferFromArray([0x26, 0x38]);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-
-        buf = pins.createBufferFromArray([0x13, 0x07]);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-
-        buf = pins.createBufferFromArray([0x26, 0x3a]);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-        basic.pause(1500);
-
-        buf.fill(0);
-        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
-
-        let pre_status = i2c.readNumber(I2C_ADDRESS_TAG_BAROMETER, buf)
-        pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
-
-        if (pre_status == 0x0e) {
-            buf = pins.createBufferFromArray([0x01]);
-
-            let resultBuf: Buffer = i2c.readBuffer(I2C_ADDRESS_TAG_BAROMETER, buf, 5);
-
-            let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
-
-            let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 8;
-
-            let thirdParam: NumberFormat.UInt32BE = resultBuf[3];
-
-            thirdParam = thirdParam << 8;
-
-
-            let out_p: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
-
-            let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
-
-            return Math.trunc(pascal);
-
-        }
-        return -1;
-        serial.writeLine(" ");
-        basic.pause(2000);
+        return barometerTag.getPressure();
     }
 
     /**
-    * Sets the state of bi-stable relay on the Relay Module to on/off
+    * Get battery voltage of the batteries in Battery Module. You have to choose if you have
+    * Battery Module (4 cells) or Mini Battery Module (2 cells).
+    */
+    //%block="voltage on $type | battery module"
+    export function batteryVoltage(type: BatteryModuleType): number {
+        return batteryModule.getVoltage(type);
+    }
+
+    /**
+    * Sets the state of bi-stable relay on the Relay Module to on/off.
     */
     //%block="set relay state $state"
     export function setRelay(state: RelayState) {
@@ -737,41 +848,8 @@ namespace hardwario {
         helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, 0);
 
     }
+
     /**
-    * Get battery voltage of the batteries in Battery Module. You have to choose if you have
-    * Battery Module (4 cells) or Mini Battery Module (2 cells).
-    */
-    //%block="voltage on $type | battery module"
-    export function batteryVoltage(type: BatteryModuleType): number {
-
-        /**TODO: ON BACKGROUND */
-        if (type == BatteryModuleType.Mini) {
-            pins.digitalWritePin(DigitalPin.P1, 0);
-            basic.pause(100);
-
-            let result: number = pins.analogReadPin(AnalogPin.P0);
-
-            pins.analogWritePin(AnalogPin.P1, 1023);
-            serial.writeLine("RESULT: " + 3 / 1024 * result / 0.33);
-            return (3 / 1024 * result / 0.33) + 0.1;
-        }
-        else {
-            pins.digitalWritePin(DigitalPin.P1, 1);
-            basic.pause(100);
-
-            let result: number = pins.analogReadPin(AnalogPin.P0);
-
-            pins.digitalWritePin(DigitalPin.P1, 0);
-            return 3 / 1024 * result / 0.13;
-        }
-        basic.pause(3000);
-    }
-    //%block="voc"
-    export function voc(): number {
-        return vocTag.getTVOC();
-    }
-    /*
-    //%block="motionDetectorTask $pin"
     export function motionDetectorTask(pin: DigitalPin) {
         serial.writeLine("START");
         basic.forever(function () {
@@ -799,7 +877,7 @@ namespace hardwario {
                 basic.pause(100);
             }
         })
-    }*/
+    }
 
     export function lcd() {
         helperFunctions.tca9534aInit(60);
@@ -816,16 +894,11 @@ namespace hardwario {
 
     }
 
-    /**
-     * Helper functions
-     * TODO NAMESPACE
-     */ 
     function bcLs013b7dh03Reverse(b: number): number {
         b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
         b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
         b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
 
         return b;
-    }
+    }*/
 }
-
