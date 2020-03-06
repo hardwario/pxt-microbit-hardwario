@@ -131,7 +131,7 @@ namespace luxTag {
 
     function startLightMeasurement() {
         let buf: Buffer;
-
+      
         control.inBackground(function () {
             if (!opt3001Initialized) {
                 buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
@@ -758,6 +758,7 @@ namespace hardwario {
     */
     //%block="illuminance"
     export function illuminance(): number {
+        serial.writeLine("MERIM");
         return luxTag.getIlluminance();
     }
 
@@ -942,7 +943,6 @@ namespace hardwario {
         helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, 0);
 
     }
-
     /**
     export function motionDetectorTask(pin: DigitalPin) {
         serial.writeLine("START");
