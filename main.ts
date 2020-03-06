@@ -122,7 +122,8 @@ namespace luxTag {
     let opt3001Initialized: boolean = false;
     let illuminanceVar = 0;
 
-    export function getIlluminance() : number {
+    export function getIlluminance(): number {
+        serial.writeLine("JSEM TU");
         if (!opt3001Initialized) {
             startLightMeasurement();
         }
@@ -134,7 +135,7 @@ namespace luxTag {
 
         if (!opt3001Initialized) {
             buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
-            pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf);
+            serial.writeLine("RETURN VALUE: " + pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf));
             basic.pause(50);
             opt3001Initialized = true;
         }
@@ -183,7 +184,7 @@ namespace vocTag {
     let sgp30Initialized: boolean = false;
     let tvocVar = 0;
 
-    export function getTVOC() : number {
+    export function getTVOC(): number {
         if (!sgp30Initialized) {
             startVOCMeasurement();
         }
@@ -253,13 +254,13 @@ namespace vocTag {
 /*** | |__| | |  | | \  / | | | | |  | || |    | |   \ \_/ / ***/
 /*** |  __  | |  | | |\/| | | | | |  | || |    | |    \   /  ***/
 /*** | |  | | |__| | |  | |_| |_| |__| || |_   | |     | |   ***/
-/*** |_|  |_|\____/|_|  |_|_____|_____/_____|  |_|     |_|   ***/                                            
+/*** |_|  |_|\____/|_|  |_|_____|_____/_____|  |_|     |_|   ***/
 namespace humidityTag {
 
     let humidityInititialized: boolean = false;
     let humidityVar = 0;
 
-    export function getHumidity() : number {
+    export function getHumidity(): number {
         if (!humidityInititialized) {
             startHumidityMeasurement();
         }
@@ -307,7 +308,7 @@ namespace temperatureTag {
     let temperatureInitialized: boolean = false;
     let temperatureVar = 0;
 
-    export function getTepmerature() : number {
+    export function getTepmerature(): number {
         if (!temperatureInitialized) {
             startTemperatureMeasurement();
         }
@@ -352,7 +353,7 @@ namespace co2Module {
     let co2Initialized: boolean = false;
     let co2ConcentrationVar = 0;
 
-    export function getCO2() : number {
+    export function getCO2(): number {
         if (!co2Initialized) {
             startCO2Measurement();
         }
@@ -565,16 +566,17 @@ namespace hardwario {
 
 
     /**
-    * Reads the current value of light intensity from the sensor
+    * Reads the current value of light intensity from the sensor.
 	    * Returns illuminance in lux.
     */
     //%block="illuminance"
     export function illuminance(): number {
+        serial.writeLine("MERIM");
         return luxTag.getIlluminance();
     }
 
     /**
-    * Reads the current value of CO2 in air from the sensor on CO2 Module
+    * Reads the current value of CO2 in air from the sensor on CO2 Module.
 	    * Returns concentration of CO2 in air.
     */
     //%block="co2"
@@ -583,7 +585,7 @@ namespace hardwario {
     }
 
     /**
-    * Reads the current value of temperature from the sensor
+    * Reads the current value of temperature from the sensor.
 	    * Returns temperature in celsius. 
     */
     //%block="temperature"
@@ -592,7 +594,7 @@ namespace hardwario {
     }
 
     /**
-    * Reads the current value of humidity from the sensor
+    * Reads the current value of humidity from the sensor.
 	    * Returns relative humidity in percent. 
     */
     //%block="humidity"
@@ -600,7 +602,7 @@ namespace hardwario {
         return humidityTag.getHumidity();
     }
     /**
-    * Reads the current altitude from the barometer sensor
+    * Reads the current altitude from the barometer sensor.
 	    * Returns meters above sea level.
     */
     //%block="altitude"
@@ -655,7 +657,7 @@ namespace hardwario {
         basic.pause(2000);
     }
     /**
-    * Reads the current atmospheric pressure from the barometer sensor
+    * Reads the current atmospheric pressure from the barometer sensor.
 	    * Returns atmospheric pressure in pascals.
     */
     //%block="pressure"
@@ -713,7 +715,7 @@ namespace hardwario {
     }
 
     /**
-    * Sets the state of bi-stable relay on the Relay Module to on/off
+    * Sets the state of bi-stable relay on the Relay Module to on/off.
     */
     //%block="set relay state $state"
     export function setRelay(state: RelayState) {
@@ -766,12 +768,21 @@ namespace hardwario {
         }
         basic.pause(3000);
     }
+
+
+    /**
+    * Reads the current concentration of voc(volatile organic compound) in the air from the sensor.
+	    * Returns total voc(tvoc) in the air in ppm.
+    */
     //%block="voc"
     export function voc(): number {
         return vocTag.getTVOC();
     }
-    /*
-    //%block="motionDetectorTask $pin"
+
+
+
+
+    /**
     export function motionDetectorTask(pin: DigitalPin) {
         serial.writeLine("START");
         basic.forever(function () {
@@ -799,7 +810,7 @@ namespace hardwario {
                 basic.pause(100);
             }
         })
-    }*/
+    }
 
     export function lcd() {
         helperFunctions.tca9534aInit(60);
@@ -816,16 +827,12 @@ namespace hardwario {
 
     }
 
-    /**
-     * Helper functions
-     * TODO NAMESPACE
-     */ 
     function bcLs013b7dh03Reverse(b: number): number {
         b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
         b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
         b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
 
         return b;
-    }
+    }*/
 }
 
