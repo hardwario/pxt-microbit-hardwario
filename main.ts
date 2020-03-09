@@ -11,7 +11,6 @@
 * Distributed as-is; no warranty is given.
 */
 
-let tca9534aInitialized: boolean = false;
 
 enum RelayState {
     On,
@@ -22,6 +21,16 @@ enum BatteryModuleType {
     Mini,
     Standard
 }
+
+
+const LIGHT_MEASUREMENT_DELAY = 3000;
+const TEMPERATURE_MEASUREMENT_DELAY = 3000;
+const HUMIDITY_MEASUREMENT_DELAY = 3000;
+const BAROMETER_MEASUREMENT_DELAY = 3000;
+const VOC_MEASUREMENT_DELAY = 3000;
+const CO2_MEASUREMENT_DELAY = 3000;
+const BATTERY_MEASUREMENT_DELAY = 3000;
+
 
 const I2C_ADDRESS_TAG_LUX = 0x44;
 const I2C_ADDRESS_TAG_TEMPERATURE = 0x48;
@@ -39,17 +48,27 @@ const I2C_ADDRESS_MODULE_CO2_FIFO = 0x4D;
 /*** _| |_ / /_| |____ ***/
 /***|_____|____|\_____|***/
 namespace i2c {
-    /**REPEATED START DOCU */
-    export function readNumber(address: number, buffer: Buffer): number {
-        pins.i2cWriteBuffer(address, buffer);
+    /**Read number from an i2c device with @address after sending the @buffer*/
+    export function readNumber(address: number, buffer: number[]): number {
+        let buf = pins.createBufferFromArray(buffer);
+        pins.i2cWriteBuffer(address, buf, true);
         return pins.i2cReadNumber(address, NumberFormat.Int8BE);
     }
 
-    export function readBuffer(address: number, buffer: Buffer, size: number): Buffer {
-        pins.i2cWriteBuffer(address, buffer);
+    /**Read buffer from an i2c device with @address after sending the @buffer*/
+    export function readBuffer(address: number, buffer: number[], size: number): Buffer {
+        let buf = pins.createBufferFromArray(buffer);
+        pins.i2cWriteBuffer(address, buf, true);
         return pins.i2cReadBuffer(address, size);
     }
 
+    /**Just a wrapper to make writing a buffer a little bit easier for me*/
+    export function writeBuffer(address: number, buffer: number[]): number {
+        let buf = pins.createBufferFromArray(buffer);
+        return pins.i2cWriteBuffer(address, buf);
+    }
+
+    /**Writes data onto the @regAddress of device with @address*/
     export function memoryWrite(address: number, regAddress: number, data: number) {
         let buf: Buffer = pins.createBufferFromArray([regAddress, data]);
         pins.i2cWriteBuffer(address, buf);
@@ -64,31 +83,29 @@ namespace i2c {
 /***   |_|  \____/ \____/|______|_____/ ***/
 namespace helperFunctions {
 
+    let tca9534aInitialized: boolean = false;
+
     export function tca9534aInit(i2cAddress: number) {
         if (!tca9534aInitialized) {
-            let buf: Buffer = pins.createBufferFromArray([0x03]);
             let returnVal: number;
 
-            returnVal = i2c.readNumber(i2cAddress, buf);
+            returnVal = i2c.readNumber(i2cAddress, [0x03]);
 
-            buf = pins.createBufferFromArray([0x01]);
-            returnVal = i2c.readNumber(i2cAddress, buf);
+            returnVal = i2c.readNumber(i2cAddress, [0x01]);
 
             tca9534aInitialized = true;
         }
     }
 
     export function tca9534aWritePort(address: number, value: NumberFormat.UInt8BE) {
-        let buf: Buffer = pins.createBufferFromArray([0x01, value]);
         let returnVal: number;
-        returnVal = i2c.readNumber(address, buf);
+        returnVal = i2c.readNumber(address, [0x01, value]);
 
     }
 
     export function tca9534aSetPortDirection(address: number, direction: NumberFormat.UInt8BE) {
-        let buf: Buffer = pins.createBufferFromArray([0x03, direction]);
         let returnVal: number;
-        returnVal = i2c.readNumber(address, buf);
+        returnVal = i2c.readNumber(address, [0x03, direction]);
     }
 
 
@@ -134,8 +151,7 @@ namespace luxTag {
 
         control.inBackground(function () {
             if (!opt3001Initialized) {
-                buf = pins.createBufferFromArray([0x01, 0xc8, 0x10]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x01, 0xc8, 0x10]) != 0) {
                     return;
                 }
                 basic.pause(50);
@@ -145,18 +161,15 @@ namespace luxTag {
             let lux_status: number;
 
             while (true) {
-                buf = pins.createBufferFromArray([0x01, 0xca, 0x10]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x01, 0xca, 0x10]);
                 basic.pause(1000);
 
-                buf = pins.createBufferFromArray([0x01]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x01]);
 
                 lux_status = pins.i2cReadNumber(I2C_ADDRESS_TAG_LUX, NumberFormat.UInt16BE);
                 if ((lux_status & 0x0680) == 0x0080) {
 
-                    buf = pins.createBufferFromArray([0x00]);
-                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_LUX, buf);
+                    i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x00]);
 
                     let raw: number = pins.i2cReadNumber(I2C_ADDRESS_TAG_LUX, NumberFormat.UInt16BE);
                     let exponent: number = raw >> 12;
@@ -167,7 +180,7 @@ namespace luxTag {
                     illuminanceVar = lux;
                     serial.writeLine("LUX: " + illuminanceVar);
 
-                    basic.pause(2000);
+                    basic.pause(LIGHT_MEASUREMENT_DELAY);
 
                 }
             }
@@ -241,8 +254,8 @@ namespace barometerTag {
         control.inBackground(function () {
 
             if (!mpl3115a2Initialized) {
-                buf = pins.createBufferFromArray([0x26, 0x04]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0x04]) != 0) {
+                    serial.writeLine("ERROR BAROMETER INIT");
                     return;
                 }
                 basic.pause(1500);
@@ -251,28 +264,23 @@ namespace barometerTag {
 
             while (true) {
                 //PRESSURE
-                buf = pins.createBufferFromArray([0x26, 0x38]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0x38]) != 0) {
                     return;
                 }
 
-                buf = pins.createBufferFromArray([0x13, 0x07]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x13, 0x07]);
 
-                buf = pins.createBufferFromArray([0x26, 0x3a]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0x3a]);
                 basic.pause(1500);
 
-                buf.fill(0);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x00]);
 
-                let pre_status = i2c.readNumber(I2C_ADDRESS_TAG_BAROMETER, buf)
+                let pre_status = i2c.readNumber(I2C_ADDRESS_TAG_BAROMETER, [0x00])
                 pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
 
                 if (pre_status == 0x0e) {
-                    buf = pins.createBufferFromArray([0x01]);
 
-                    let resultBuf: Buffer = i2c.readBuffer(I2C_ADDRESS_TAG_BAROMETER, buf, 5);
+                    let resultBuf: Buffer = i2c.readBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x01], 5);
                     let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
                     let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 8;
                     let thirdParam: NumberFormat.UInt32BE = resultBuf[3];
@@ -287,24 +295,19 @@ namespace barometerTag {
                     basic.pause(20);
 
                     //ALTITUDE
-                    buf = pins.createBufferFromArray([0x26, 0xb8]);
-                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                    i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0xb8]);
 
-                    buf = pins.createBufferFromArray([0x13, 0x07]);
-                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                    i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x13, 0x07]);
 
-                    buf = pins.createBufferFromArray([0x26, 0xba]);
-                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                    i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0xba]);
                     basic.pause(1500);
 
-                    buf.fill(0);
-                    pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                    i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0]);
 
                     let alt_status = pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
 
                     if (alt_status == 0x0e) {
-                        buf = pins.createBufferFromArray([0x01]);
-                        pins.i2cWriteBuffer(I2C_ADDRESS_TAG_BAROMETER, buf);
+                        i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x01]);
 
                         let resultBuf: Buffer = pins.i2cReadBuffer(I2C_ADDRESS_TAG_BAROMETER, 5);
                         let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 24;
@@ -319,7 +322,7 @@ namespace barometerTag {
                         serial.writeLine('ALTITUDE: ' + altitudeVar);
                     }
 
-                    basic.pause(3000);
+                    basic.pause(BAROMETER_MEASUREMENT_DELAY);
                 }
             }
         })
@@ -350,11 +353,9 @@ namespace vocTag {
 
         control.inBackground(function () {
             if (!sgp30Initialized) {
-                buf = pins.createBufferFromArray([0x20, 0x2f]);
-                outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, buf, 3);
+                outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x2f], 3);
 
-                buf = pins.createBufferFromArray([0x20, 0x03]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x03]) != 0) {
                     sgp30Initialized = false;
                     return;
                 }
@@ -366,14 +367,12 @@ namespace vocTag {
 
                 let crc = sgp30CalculateCrc(crcBuf, 2);
 
-                buf = pins.createBufferFromArray([0x20, 0x61, 0x00, 0x00, crc]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x61, 0x00, 0x00, crc]) != 0) {
                     return;
                 }
                 basic.pause(30);
 
-                buf = pins.createBufferFromArray([0x20, 0x08]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x08]);
                 basic.pause(30);
 
                 outBuf = pins.i2cReadBuffer(I2C_ADDRESS_TAG_VOC, 6);
@@ -384,7 +383,7 @@ namespace vocTag {
                 tvocVar = tvoc;
                 serial.writeLine("VOC: " + tvocVar);
 
-                basic.pause(2000);
+                basic.pause(VOC_MEASUREMENT_DELAY);
             }
         })
     }
@@ -433,11 +432,9 @@ namespace vocLpTag {
 
         control.inBackground(function () {
             if (!sgpc3Initialized) {
-                buf = pins.createBufferFromArray([0x20, 0x2f]);
-                outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, buf, 3);
+                outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x2f], 3);
 
-                buf = pins.createBufferFromArray([0x20, 0xae]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0xae]) != 0) {
                     sgpc3Initialized = false;
                     return;
                 }
@@ -448,14 +445,12 @@ namespace vocLpTag {
                 let crcBuf: number[] = [0x00, 0x00];
                 let crc = sgpc3CalculateCrc(crcBuf, 2);
 
-                buf = pins.createBufferFromArray([0x20, 0x61, 0x00, 0x00, crc]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x61, 0x00, 0x00, crc]) != 0) {
                     return;
                 }
                 basic.pause(30);
 
-                buf = pins.createBufferFromArray([0x20, 0x08]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x08]);
                 basic.pause(150);
 
                 outBuf = pins.i2cReadBuffer(I2C_ADDRESS_TAG_VOC, 6);
@@ -465,7 +460,7 @@ namespace vocLpTag {
                 tvocVar = tvoc;
                 serial.writeLine("VOC-LP: " + tvocVar);
 
-                basic.pause(2000);
+                basic.pause(VOC_MEASUREMENT_DELAY);
             }
         })
     }
@@ -514,15 +509,13 @@ namespace humidityTag {
         control.inBackground(function () {
             let buf: Buffer;
             while (true) {
-                buf = pins.createBufferFromArray([0xfe]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_HUMIDITY, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_HUMIDITY, [0xfe]) != 0) {
                     humidityInititialized = false;
                     return;
                 }
                 basic.pause(20);
 
-                buf = pins.createBufferFromArray([0xf5]);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_HUMIDITY, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_HUMIDITY, [0xf5]);
                 basic.pause(50);
 
                 let rh = pins.i2cReadBuffer(I2C_ADDRESS_TAG_HUMIDITY, 2);
@@ -535,7 +528,7 @@ namespace humidityTag {
 
                 serial.writeLine("HUMIDITY: " + humidityVar);
 
-                basic.pause(2000);
+                basic.pause(HUMIDITY_MEASUREMENT_DELAY);
             }
         })
 
@@ -571,25 +564,20 @@ namespace temperatureTag {
             let buf: Buffer;
 
             while (true) {
-                buf = pins.createBufferFromArray([0x01, 0x80]);
-                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_TEMPERATURE, buf) != 0) {
+                if (i2c.writeBuffer(I2C_ADDRESS_TAG_TEMPERATURE, [0x01, 0x80]) != 0) {
                     temperatureInitialized = false;
                     return;
                 }
 
-                buf.fill(0);
-                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_TEMPERATURE, buf);
+                i2c.writeBuffer(I2C_ADDRESS_TAG_TEMPERATURE, [0x00]);
 
                 t = pins.i2cReadBuffer(I2C_ADDRESS_TAG_TEMPERATURE, 2);
                 tmp112 = t[0] + (t[1] / 100)
 
-                serial.writeLine("TEMP");
-                serial.writeNumber(tmp112);
-
                 t = tmp112;
                 serial.writeLine("TEMP: " + t);
 
-                basic.pause(2000);
+                basic.pause(TEMPERATURE_MEASUREMENT_DELAY);
             }
         })
     }
@@ -639,7 +627,7 @@ namespace batteryModule {
                     voltage = 3 / 1024 * result / 0.13;
                 }
 
-                basic.pause(3000);
+                basic.pause(BATTERY_MEASUREMENT_DELAY);
             }
         })
     }
@@ -699,8 +687,7 @@ namespace co2Module {
                 /**BOOT */
 
                 while (value != 0) {
-                    buf = pins.createBufferFromArray([0x00])
-                    let port = i2c.readNumber(0x38, buf);
+                    let port = i2c.readNumber(0x38, [0x00]);
                     value = ((port >> 7) & 0x01);
 
                     basic.pause(10);
@@ -741,9 +728,7 @@ namespace co2Module {
 
                 /**BOOT READ */
 
-                buf = pins.createBufferFromArray([0x48]);
-
-                let spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, buf);
+                let spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, [0x48]);
                 pins.i2cWriteNumber(I2C_ADDRESS_MODULE_CO2_FIFO, 0x00, NumberFormat.Int8LE);
                 let readBuf: Buffer = pins.i2cReadBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, 4);
 
@@ -761,23 +746,20 @@ namespace co2Module {
                 /**MEASURE */
                 value = 50;
                 while (value == 0) {
-                    buf = pins.createBufferFromArray([0x00])
-                    let port = i2c.readNumber(0x38, buf);
+                    let port = i2c.readNumber(0x38, [0x00]);
                     value = ((port >> 7) & 0x01);
 
                     basic.pause(10);
                 }
 
 
-                buf = pins.createBufferFromArray([0x00, 0xfe, 0x44, 0x00, 0x80, 0x2c, 0x79, 0x39]);
                 moduleCo2UartEnable(true);
-                pins.i2cWriteBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, buf);
+                i2c.writeBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, [0x00, 0xfe, 0x44, 0x00, 0x80, 0x2c, 0x79, 0x39]);
                 basic.pause(120);
 
                 /**MEASURE READ */
-                buf = pins.createBufferFromArray([0x48]);
 
-                spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, buf);
+                spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, [0x48]);
                 pins.i2cWriteNumber(I2C_ADDRESS_MODULE_CO2_FIFO, 0x00, NumberFormat.Int8LE);
                 readBuf = pins.i2cReadBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, 49);
                 moduleCo2UartEnable(false);
@@ -810,7 +792,7 @@ namespace co2Module {
 
                 serial.writeLine("CO2: " + co2ConcentrationVar);
 
-                basic.pause(3000);
+                basic.pause(CO2_MEASUREMENT_DELAY);
             }
         })
     }
