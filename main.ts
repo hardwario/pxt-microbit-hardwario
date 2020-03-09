@@ -255,11 +255,10 @@ namespace barometerTag {
 
             if (!mpl3115a2Initialized) {
                 if (i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0x04]) != 0) {
-                    serial.writeLine("ERROR BAROMETER INIT");
                     return;
                 }
-                basic.pause(1500);
                 mpl3115a2Initialized = true;
+                basic.pause(1500);
             }
 
             while (true) {
