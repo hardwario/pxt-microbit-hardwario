@@ -96,19 +96,19 @@ namespace helperFunctions {
     export function sc16is740ResetFifo(fifo: number) {
         let register_fcr: number;
         register_fcr = fifo | 0x01;
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_CO2_EXP, 0x02 << 3, register_fcr);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_CO2_EXP, 0x10, register_fcr);
     }
 
 
     export function sc16is740Init(address: number) {
-        i2c.memoryWrite(address, 0x03 << 3, 0x80);
-        i2c.memoryWrite(address, 0x00 << 3, 0x58);
-        i2c.memoryWrite(address, 0x01 << 3, 0x00);
-        i2c.memoryWrite(address, 0x03 << 3, 0xbf);
-        i2c.memoryWrite(address, 0x02 << 3, 0x10);
-        i2c.memoryWrite(address, 0x03 << 3, 0x07);
-        i2c.memoryWrite(address, 0x02 << 3, 0x07);
-        i2c.memoryWrite(address, 0x01 << 3, 0x11);
+        i2c.memoryWrite(address, 0x18, 0x80);
+        i2c.memoryWrite(address, 0x00, 0x58);
+        i2c.memoryWrite(address, 0x08, 0x00);
+        i2c.memoryWrite(address, 0x18, 0xbf);
+        i2c.memoryWrite(address, 0x10, 0x10);
+        i2c.memoryWrite(address, 0x18, 0x07);
+        i2c.memoryWrite(address, 0x10, 0x07);
+        i2c.memoryWrite(address, 0x08, 0x11);
     }
 }
 
@@ -175,6 +175,37 @@ namespace luxTag {
     }
 }
 
+/***  _____  ______ _           __     __***/
+/*** |  __ \|  ____| |        /\\ \   / /***/
+/*** | |__) | |__  | |       /  \\ \_/ / ***/
+/*** |  _  /|  __| | |      / /\ \\   /  ***/
+/*** | | \ \| |____| |____ / ____ \| |   ***/
+/*** |_|  \_\______|______/_/    \_\_|   ***/
+namespace relayModule {
+
+    let relayInit: boolean = false;
+
+    export function setState(state: RelayState) {
+        if (!relayInit) {
+            helperFunctions.tca9534aInit(I2C_ADDRESS_TCA9534);
+
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((0x40) | (0x10)));
+
+            helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_TCA9534, 0x00);
+
+            relayInit = true;
+        }
+
+        if (state == RelayState.On) {
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((0x10) | (0x20)));
+        }
+        else {
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((0x40) | (0x80)));
+        }
+        basic.pause(50);
+        helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, 0);
+    }
+}
 
 /***  ____          _____   ____  __  __ ______ _______ ______ _____  ***/
 /*** |  _ \   /\   |  __ \ / __ \|  \/  |  ____|__   __|  ____|  __ \ ***/
@@ -331,7 +362,8 @@ namespace vocTag {
             }
 
             while (true) {
-                let crcBuf: number[] = [0 >> 8, 0];
+                let crcBuf: number[] = [0x00, 0x00];
+
                 let crc = sgp30CalculateCrc(crcBuf, 2);
 
                 buf = pins.createBufferFromArray([0x20, 0x61, 0x00, 0x00, crc]);
@@ -358,6 +390,87 @@ namespace vocTag {
     }
 
     function sgp30CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
+        let crc: number = 0xff;
+
+        for (let i = 0; i < length; i++) {
+            crc ^= buffer[i];
+
+            for (let j = 0; j < 8; j++) {
+                if ((crc & 0x80) != 0) {
+                    crc = (crc << 1) ^ 0x31;
+                }
+                else {
+                    crc <<= 1;
+                }
+            }
+        }
+
+        return crc;
+    }
+}
+
+/*** __      ______   _____      _      _____  ***/
+/*** \ \    / / __ \ / ____|    | |    |  __ \ ***/
+/***  \ \  / / |  | | |   ______| |    | |__) |***/
+/***   \ \/ /| |  | | |  |______| |    |  ___/ ***/
+/***    \  / | |__| | |____     | |____| |     ***/
+/***     \/   \____/ \_____|    |______|_|     ***/
+namespace vocLpTag {
+
+    let sgpc3Initialized: boolean = false;
+    let tvocVar = 0;
+
+    export function getTVOC(): number {
+        if (!sgpc3Initialized) {
+            startVOCLpMeasurement();
+        }
+        return Math.trunc(tvocVar);
+    }
+
+    function startVOCLpMeasurement() {
+        let buf: Buffer;
+        let outBuf: Buffer;
+
+        control.inBackground(function () {
+            if (!sgpc3Initialized) {
+                buf = pins.createBufferFromArray([0x20, 0x2f]);
+                outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, buf, 3);
+
+                buf = pins.createBufferFromArray([0x20, 0xae]);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                    sgpc3Initialized = false;
+                    return;
+                }
+                sgpc3Initialized = true;
+            }
+
+            while (true) {
+                let crcBuf: number[] = [0x00, 0x00];
+                let crc = sgpc3CalculateCrc(crcBuf, 2);
+
+                buf = pins.createBufferFromArray([0x20, 0x61, 0x00, 0x00, crc]);
+                if (pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf) != 0) {
+                    return;
+                }
+                basic.pause(30);
+
+                buf = pins.createBufferFromArray([0x20, 0x08]);
+                pins.i2cWriteBuffer(I2C_ADDRESS_TAG_VOC, buf);
+                basic.pause(150);
+
+                outBuf = pins.i2cReadBuffer(I2C_ADDRESS_TAG_VOC, 6);
+
+                let tvoc = (outBuf[0] << 8) | outBuf[1];
+
+                tvocVar = tvoc;
+                serial.writeLine("VOC-LP: " + tvocVar);
+
+                basic.pause(2000);
+            }
+        })
+    }
+
+    function sgpc3CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
         let crc: number = 0xff;
 
         for (let i = 0; i < length; i++) {
@@ -422,7 +535,6 @@ namespace humidityTag {
 
                 serial.writeLine("HUMIDITY: " + humidityVar);
 
-                /**TODO ADD DELAY CONSTANTS */
                 basic.pause(2000);
             }
         })
@@ -563,11 +675,12 @@ namespace co2Module {
 
             helperFunctions.tca9534aInit(0x38);
             helperFunctions.tca9534aWritePort(0x38, 0x00);
-            helperFunctions.tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)) & (~(1 << 6)));
+            helperFunctions.tca9534aSetPortDirection(0x38, (~(0x01) & ~(0x10)) & (~(0x40)));
 
             basic.pause(1);
 
-            helperFunctions.tca9534aSetPortDirection(0x38, (~(1 << 0) & ~(1 << 4)));
+            helperFunctions.tca9534aSetPortDirection(0x38, (~(0x01) & ~(0x10)));
+
 
             basic.pause(1);
 
@@ -628,7 +741,8 @@ namespace co2Module {
 
                 /**BOOT READ */
 
-                buf = pins.createBufferFromArray([0x09 << 3]);
+                buf = pins.createBufferFromArray([0x48]);
+
                 let spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, buf);
                 pins.i2cWriteNumber(I2C_ADDRESS_MODULE_CO2_FIFO, 0x00, NumberFormat.Int8LE);
                 let readBuf: Buffer = pins.i2cReadBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, 4);
@@ -661,7 +775,8 @@ namespace co2Module {
                 basic.pause(120);
 
                 /**MEASURE READ */
-                buf = pins.createBufferFromArray([0x09 << 3]);
+                buf = pins.createBufferFromArray([0x48]);
+
                 spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, buf);
                 pins.i2cWriteNumber(I2C_ADDRESS_MODULE_CO2_FIFO, 0x00, NumberFormat.Int8LE);
                 readBuf = pins.i2cReadBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, 49);
@@ -701,19 +816,19 @@ namespace co2Module {
     }
 
     function moduleCo2DeviceEnable(state: boolean) {
-        let direction: number = (~(1 << 0) & ~(1 << 4));
+        let direction: number = (~(0x01) & ~(0x10));
 
         if (state) {
-            direction &= (~(1 << 2)) & (~(1 << 1)) & (~(1 << 3));
+            direction &= (~(0x04)) & (~(0x02)) & (~(0x08));
         }
         helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_MODULE_CO2_EXP, direction);
     }
 
     function moduleCo2ChargeEnable(state: boolean) {
-        let direction: number = (~(1 << 0) & ~(1 << 4));
+        let direction: number = (~(0x00) & ~(0x10));
 
         if (state) {
-            direction &= (~(1 << 2)) & (~(1 << 1));
+            direction &= (~(0x04)) & (~(0x02));
         }
         return helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_MODULE_CO2_EXP, direction);
     }
@@ -749,7 +864,6 @@ namespace co2Module {
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
 namespace hardwario {
     let motionInit: boolean = false;
-    let relayInit: boolean = false;
 
     /**
     * Reads the current value of light intensity from the sensor.
@@ -797,6 +911,15 @@ namespace hardwario {
     }
 
     /**
+    * Reads the current concentration of voc(volatile organic compound) in the air from the low-power sensor.
+        * Returns total voc(tvoc) in the air in ppm.
+    */
+    //%block="voc-lp"
+    export function vocLP(): number {
+        return vocLpTag.getTVOC();
+    }
+
+    /**
     * Reads the current altitude from the barometer sensor.
 	    * Returns meters above sea level.
     */
@@ -828,25 +951,7 @@ namespace hardwario {
     */
     //%block="set relay state $state"
     export function setRelay(state: RelayState) {
-        if (!relayInit) {
-            helperFunctions.tca9534aInit(I2C_ADDRESS_TCA9534);
-
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((1 << 6) | (1 << 4)));
-
-            helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_TCA9534, 0x00);
-
-            relayInit = true;
-        }
-
-        if (state == RelayState.On) {
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((1 << 4) | (1 << 5)));
-        }
-        else {
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((1 << 6) | (1 << 7)));
-        }
-        basic.pause(50);
-        helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, 0);
-
+        relayModule.setState(state);
     }
 
     /**
