@@ -207,7 +207,6 @@ namespace relayModule {
     }
 }
 
-
 /***  ____          _____   ____  __  __ ______ _______ ______ _____  ***/
 /*** |  _ \   /\   |  __ \ / __ \|  \/  |  ____|__   __|  ____|  __ \ ***/
 /*** | |_) | /  \  | |__) | |  | | \  / | |__     | |  | |__  | |__) |***/
@@ -364,6 +363,7 @@ namespace vocTag {
 
             while (true) {
                 let crcBuf: number[] = [0x00, 0x00];
+
                 let crc = sgp30CalculateCrc(crcBuf, 2);
 
                 buf = pins.createBufferFromArray([0x20, 0x61, 0x00, 0x00, crc]);
@@ -681,6 +681,7 @@ namespace co2Module {
 
             helperFunctions.tca9534aSetPortDirection(0x38, (~(0x01) & ~(0x10)));
 
+
             basic.pause(1);
 
             helperFunctions.sc16is740Init(I2C_ADDRESS_MODULE_CO2_FIFO);
@@ -741,6 +742,7 @@ namespace co2Module {
                 /**BOOT READ */
 
                 buf = pins.createBufferFromArray([0x48]);
+
                 let spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, buf);
                 pins.i2cWriteNumber(I2C_ADDRESS_MODULE_CO2_FIFO, 0x00, NumberFormat.Int8LE);
                 let readBuf: Buffer = pins.i2cReadBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, 4);
@@ -774,6 +776,7 @@ namespace co2Module {
 
                 /**MEASURE READ */
                 buf = pins.createBufferFromArray([0x48]);
+
                 spacesAvaliable = i2c.readNumber(I2C_ADDRESS_MODULE_CO2_FIFO, buf);
                 pins.i2cWriteNumber(I2C_ADDRESS_MODULE_CO2_FIFO, 0x00, NumberFormat.Int8LE);
                 readBuf = pins.i2cReadBuffer(I2C_ADDRESS_MODULE_CO2_FIFO, 49);
