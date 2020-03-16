@@ -1,14 +1,14 @@
 <a href="https://www.hardwario.com/"><img src="https://www.hardwario.com/ci/assets/hw-logo.svg" width="200" alt="HARDWARIO Logo" align="right"></a>
 
 # HARDWARIO - micro:bit Integration 
----
+
 [![Travis](https://img.shields.io/travis/bigclownprojects/pxt-HARDWARIO/master.svg)](https://travis-ci.org/bigclownprojects/pxt-HARDWARIO)
 [![Release](https://img.shields.io/github/release/bigclownprojects/pxt-HARDWARIO.svg)](https://github.com/bigclownprojects/pxt-HARDWARIO)
 [![License](https://img.shields.io/github/license/bigclownprojects/pxt-HARDWARIO.svg)](https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/hardwario_en.svg?style=social&label=Follow)](https://twitter.com/hardwario_en)
  ---
  
- <img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/microbit_main.png?raw=true" width="200" alt="micro:bit main" align="right"></a>
+<img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/microbit_main.png?raw=true" width="400" alt="micro:bit main" align="right"></a>
  
 This document describes the concept of the micro:bit integration into the HARDWARIO IoT Kit (further referred to just as "IoT Kit"). The IoT Kit offers a huge variety of pluggable modules that can be easily used not for educational purposes, but also for industrial applications and have been battle-tested in a number of pilot projects.
 
@@ -24,8 +24,8 @@ Therefore we should create the micro:bit adapter that will sit above the HARDWAR
 ## Signal Mapping
 Obviously, the signal mapping will not cover 100% of the IoT Kit use-cases. The following suggestion focuses on the most prominent scenarios.
 
-![](https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/core_pinout.png?raw=true) ![](https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/microbit_pinout.png?raw=true)
-
+<img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/core_pinout.png?raw=true" width="300" alt="micro:bit main" align="left"></a>
+<img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/microbit_pinout.png?raw=true" width="300" alt="micro:bit main" align="right"></a>
 
 | Domain              | micro:bit                              | IoT Kit Header                             |
 |---------------------|----------------------------------------|--------------------------------------------|
@@ -33,7 +33,7 @@ Obviously, the signal mapping will not cover 100% of the IoT Kit use-cases. The 
 | I2C                 | P20<br>P19                             | SDA0<br>SCL0                               |
 | SPI                 | P16<br>P13/SCK<br>P15/MOSI<br>P14/MISO | P15/CS<br>P14/SCLK<br>P13/MOSI<br>P12/MISO |
 | Battery measurement | P0<br>P1                               | P0/A0<br>P1/A1                             |
-| PIR Module          | P8<br>---<br><br>P2                    | P8<br>---<br><br>P9                        |
+| PIR Module          | P8<br>P2                               | P8<br>P9                                   |
 
 
 
