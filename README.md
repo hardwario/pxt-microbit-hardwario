@@ -21,7 +21,7 @@ A nice feature of the micro:bit board is the LED matrix and the fact it has 2 pu
 
 
 Therefore we should create the micro:bit adapter that will sit above the HARDWARIO IoT Kit assembly. Such composition will be bold and attractive for the micro:bit enthusiasts.
-<br><br><br>
+<br><br><br><br><br><br>
 
 ## Signal Mapping
 Obviously, the signal mapping will not cover 100% of the IoT Kit use-cases. The following suggestion focuses on the most prominent scenarios.
@@ -31,7 +31,7 @@ Obviously, the signal mapping will not cover 100% of the IoT Kit use-cases. The 
 
 | Domain              | micro:bit                              | IoT Kit Header                             |
 |---------------------|----------------------------------------|--------------------------------------------|
-| POWER               | GND<br>+3v3                            | GND<br>VDD                                 |
+| Power               | GND<br>+3v3                            | GND<br>VDD                                 |
 | I2C                 | P20<br>P19                             | SDA0<br>SCL0                               |
 | SPI                 | P16<br>P13/SCK<br>P15/MOSI<br>P14/MISO | P15/CS<br>P14/SCLK<br>P13/MOSI<br>P12/MISO |
 | Battery measurement | P0<br>P1                               | P0/A0<br>P1/A1                             |
