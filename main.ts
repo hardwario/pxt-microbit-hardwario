@@ -1,7 +1,7 @@
 /**
 * Jakub Smejkal, Karel Blavka @ HARDWARIO s.r.o.
-* February 2020
-* https://github.com/SmejkalJakub/pxt-HARDWARIO
+* March 2020
+* https://github.com/bigclownprojects/pxt-HARDWARIO
 * Development environment specifics:
 * Written in Microsoft PXT
 *
@@ -895,7 +895,7 @@ namespace hardwario {
     * Reads the current concentration of voc(volatile organic compound) in the air from the low-power sensor.
         * Returns total voc(tvoc) in the air in ppm.
     */
-    //%block="voc-lp"
+    //%block="voc | lp"
     export function vocLP(): number {
         return vocLpTag.getTVOC();
     }
