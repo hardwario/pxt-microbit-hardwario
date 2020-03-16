@@ -21,6 +21,7 @@ A nice feature of the micro:bit board is the LED matrix and the fact it has 2 pu
 
 
 Therefore we should create the micro:bit adapter that will sit above the HARDWARIO IoT Kit assembly. Such composition will be bold and attractive for the micro:bit enthusiasts.
+<br><br><br>
 
 ## Signal Mapping
 Obviously, the signal mapping will not cover 100% of the IoT Kit use-cases. The following suggestion focuses on the most prominent scenarios.
