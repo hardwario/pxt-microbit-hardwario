@@ -69,9 +69,104 @@ The Microbit Module will be designed first. Based on the sample, HARDWARIO will 
 
 On the firmware side, the initial integration will be done for the CO2 Module, Humidity Tag, Barometer Tag, Lux Meter Tag, and LCD Module. On this kit, the basics of the air quality monitoring can be explained with the possibility to alert excessive values on the micro:bit LED matrix.
 
+
+# Examples
+Code example for making a simple Thermostat with micro:bit showing an icon on LED matrix and HARDWARIO modules measuring the temperature and providing a Relay impulse
+```blocks
+input.onButtonPressed(Button.A, function () {
+    Temp = Temp + 1
+    basic.showNumber(Temp)
+})
+input.onButtonPressed(Button.B, function () {
+    Temp = Temp - 1
+    basic.showNumber(Temp)
+})
+let Temp = 0
+Temp = 40
+basic.forever(function () {
+    if (hardwario.temperature() <= Temp) {
+        hardwario.setRelay(RelayState.On)
+        basic.showIcon(IconNames.Yes)
+    } else {
+        hardwario.setRelay(RelayState.Off)
+        basic.showIcon(IconNames.No)
+    }
+    basic.pause(2000)
+})
+```
+
+# Reference
+---
+## co2 #hardwario-co2
+Starts periodic measurement on [HARDWARIO CO2 Module](https://shop.hardwario.com/co2-module/) and returns the value of CO2 in the air. The first initialization takes around 1 minute then it measures every 3 seconds.
+```sig
+hardwario.co2()
+```
+
+## illuminance #hardwario-illuminance
+Starts periodic measurement on [HARDWARIO Lux Meter Tag](https://shop.hardwario.com/lux-meter-tag/) and returns the value of light intensity in the lux. 
+It updates the value every 3 seconds.
+```sig
+hardwario.illuminance()
+```
+
+## temperature #hardwario-temperature
+Starts periodic measurement on [HARDWARIO Temperature Tag](https://shop.hardwario.com/temperature-tag/) and returns the value of temperature in Celsius. 
+It updates the value every 3 seconds.
+```sig
+hardwario.temperature()
+```
+
+## voc #hardwario-voc
+Starts periodic measurement on [HARDWARIO VOC Tag](https://shop.hardwario.com/voc-tag/) and returns the value of voc(volatile organic compound) in tvoc. 
+It updates the value every 3 seconds.
+```sig
+hardwario.voc()
+```
+
+We also have a [Low Power version](https://shop.hardwario.com/voc-lp-tag/) so if you have this Tag you have to use this code:
+```sig
+hardwario.vocLP()
+```
+
+## humidity #hardwario-humidity
+Starts periodic measurement on [HARDWARIO Humidity Tag](https://shop.hardwario.com/humidity-tag/) and returns the percentage of humidity in the air. 
+It updates the value every 3 seconds.
+```sig
+hardwario.humidity()
+```
+
+## altitude #hardwario-altitude
+Starts periodic measurement on [HARDWARIO Barometer Tag](https://shop.hardwario.com/barometer-tag/) and returns the meters above sea level.
+It updates the value every 3 seconds.
+```sig
+hardwario.altitude()
+```
+
+## pressure #hardwario-pressure
+Starts periodic measurement on [HARDWARIO Barometer Tag](https://shop.hardwario.com/barometer-tag/) and returns the atmospheric pressure in Pascal.
+It updates the value every 3 seconds.
+```sig
+hardwario.pressure()
+```
+
+## battery #hardwario-batteryVoltage
+Starts periodic measurement on [HARDWARIO Battery Module](https://shop.hardwario.com/battery-module/) or [HARDWARIO Mini Battery Module](https://shop.hardwario.com/mini-battery-module/) and returns Voltage on all the cells in Volts. It updates the value every 3 seconds.
+
+* ``Mini``, choose this if you have a mini version of Battery Module
+* ``Standard``, choose this if you have a standard version of Battery Module
+
+```sig
+hardwario.batteryVoltage(BatteryModuleType.Mini)
+```
+
+## relay #hardwario-setRelay
+Set the state of Bi-stable relay on [HARDWARIO Relay Module](https://shop.hardwario.com/relay-module/) to selected state(On/Off).
+```sig
+hardwario.setRelay(RelayState.On)
+```
+
 ---
 
-
 Made with &#x2764;&nbsp; by [**HARDWARIO s.r.o.**](https://www.hardwario.com/) in the heart of Europe.
-
 
