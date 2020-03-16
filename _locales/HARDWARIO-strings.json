@@ -1,9 +1,13 @@
 {
-  "hardwario.getLight|block": "getLight",
-  "hardwario.getTemperature|block": "getTemperature",
-  "hardwario.getHumidity|block": "getHumidity",
-  "hardwario.getAltitude|block": "getAltitude",
-  "hardwario.getPressure|block": "getPressure",
+  "hardwario.illuminance|block": "illuminance",
+  "hardwario.temperature|block": "temperature",
+  "hardwario.humidity|block": "humidity",
+  "hardwario.altitude|block": "altitude",
+  "hardwario.pressure|block": "pressure",
+  "hardwario.co2|block": "co2",
+  "hardwario.voc|block": "voc",
+  "hardwario.vocLP|block": "vocLP",
+  "hardwario.batteryVoltage|block": "voltage on $type | battery module",
   "hardwario.setRelay|block": "set relay state $state",
   "hardwario|block": "hardwario"
 }

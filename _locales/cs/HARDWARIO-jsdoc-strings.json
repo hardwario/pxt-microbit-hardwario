@@ -1,10 +1,13 @@
 {
-    "hardwario": "Jakub Smejkal @ HARDWARIO s.r.o.\nÚnor 2020\nhttps://github.com/SmejkalJakub/pxt-HARDWARIO\nSpecifikace vývojového prostředí:\nNapsáno v Microsoft PXT\n\nThis code is released under the [MIT License](http://opensource.org/licenses/MIT).\nPlease review the LICENSE.md file included with this example. If you have any questions \nor concerns with licensing, please contact support@hardwario.com.\nDistributed as-is; no warranty is given.",
-    "hardwario.getLight": "Vyčte aktuální hodnotu intenzity světla ze senzoru\nVrací intensitu světla v jednotkách lux.",
-    "hardwario.getTemperature": "Vyčte aktuální hodnotu teploty ze senzoru\nVrací teplotu ve stupních celsia.",
-    "hardwario.getHumidity": "Vyčte aktuální hodnotu vlhkosti ze senzoru\nVrací relativní vlhkost v procentech.",
-    "hardwario.getAltitude": "Vyčte aktuální hodnotu nadmořské výšky ze senzoru\nVrací hodnotu v metrech nad mořem.",
-    "hardwario.getPressure": "Vyčte aktuální hodnotu atmosférického tlaku ze senzoru\nVrací atmosférický tlak v pascalech.",
-    "hardwario.setRelay": "Nastaví stav bi-stabilního relé na Relé Modulu na on/off",
-    "hardwario.getCO2": "CO2"
-  }
+  "hardwario": "Jakub Smejkal, Karel Blavka @ HARDWARIO s.r.o.\nBřezen 2020\nhttps://github.com/bigclownprojects/pxt-HARDWARIO\nVývojové prostředí:\nVytvořeno v Microsoft PXT\n\nKód je vydáván pod [MIT Licencí](http://opensource.org/licenses/MIT).\nPotřebné infomace se nachází v soubor LICENSE.md, který je zahrnut v tomto repozitáři. S Jakýmikoli dotazy\nnebo problémy s licencí se prosím obraťte na support@hardwario.com.\nDistributed as-is; no warranty is given.",
+  "hardwario.illuminance": "Čte momentální hodnotu intenzity světla ze sensoru.\nVrací intenzitu světla v jednotkách lux.",
+  "hardwario.temperature": "Čte momentální hodnotu teploty ze sensoru.\nVrací teplotu ve stupních Celsia.",
+  "hardwario.humidity": "Čte momentální hodnotu vlhkosti ze sensoru.\nVrací vlhost vzduchu v procentech.",
+  "hardwario.altitude": "Čte momentální hodnotu nadmořské výšky ze sensoru.\nVrací nadmořskou výšku v jednotkách metrech nad mořem.",
+  "hardwario.pressure": "Čte momentální hodnotu atmosferického tlaku ze sensoru.\nVrací atmosferický tlak v Pascalech.",
+  "hardwario.co2": "Čte momentální hodnotu co2 ze sensoru.\nVrací koncentraci co2 v ovzduší.",
+  "hardwario.voc": "Čte momentální hodnotu voc(Těkavá organická látka) ze sensoru.\nVrací tvoc(Celkové voc) v jednotkách ppm(Parts per Milion).",
+  "hardwario.vocLP": "Čte momentální hodnotu voc(Těkavá organická látka) ze sensoru.\nVrací tvoc(Celkové voc) v jednotkách ppm(Parts per Milion).",
+  "hardwario.batteryVoltage": "Čte momentální napětí na bateriích v Battery Modulu. Musíte zvolit zda máte\nBattery Modul(4 články) nebo Mini Battery Modul(2 články).",
+  "hardwario.setRelay": "Nastavuje stav bi-stabilího relé na Relé Modulu na on/off."
+}
