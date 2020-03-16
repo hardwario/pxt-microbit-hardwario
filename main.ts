@@ -614,7 +614,6 @@ namespace batteryModule {
 
                     pins.analogWritePin(AnalogPin.P1, 1023);
                     voltage = (3 / 1024 * result / 0.33) + 0.1;
-                    serial.writeLine("VOLTAGE: " + voltage);
                 }
                 else {
                     pins.digitalWritePin(DigitalPin.P1, 1);
@@ -625,6 +624,7 @@ namespace batteryModule {
                     pins.digitalWritePin(DigitalPin.P1, 0);
                     voltage = 3 / 1024 * result / 0.13;
                 }
+                serial.writeLine("VOLTAGE: " + voltage);
 
                 basic.pause(BATTERY_MEASUREMENT_DELAY);
             }
