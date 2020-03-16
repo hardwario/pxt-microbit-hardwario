@@ -16,7 +16,7 @@ This document describes the concept of the micro:bit integration into the HARDWA
 The IoT Kit uses Core Module as its main control element. It has its own MCU and radio to exchange data with a wireless gateway. Contrary to that, the micro:bit could replace its role and IoT Kit would represent an accessory extension to the micro:bit mainboard.
 
 ## Mechanical Concept 
-<img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/Micro_bit_schema.png?raw=true" width="400" alt="micro:bit main" align="left"></a>
+<img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/Micro_bit_schema.png?raw=true" width="300" alt="micro:bit main" align="left"></a>
 A nice feature of the micro:bit board is the LED matrix and the fact it has 2 push buttons. Hereby the module should be  visible - basically, stay on the top of the other components in the ecosystem. 
 
 
@@ -25,7 +25,7 @@ Therefore we should create the micro:bit adapter that will sit above the HARDWAR
 ## Signal Mapping
 Obviously, the signal mapping will not cover 100% of the IoT Kit use-cases. The following suggestion focuses on the most prominent scenarios.
 
-<img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/core_pinout.png?raw=true" width="500" alt="micro:bit main" align="left"></a>
+<img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/core_pinout.png?raw=true" width="400" alt="micro:bit main" align="left"></a>
 <img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/microbit_pinout.png?raw=true" width="400" alt="micro:bit main" align="right"></a>
 
 | Domain              | micro:bit                              | IoT Kit Header                             |
