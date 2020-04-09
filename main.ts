@@ -22,6 +22,17 @@ enum BatteryModuleType {
     Standard
 }
 
+enum MeasurementDelays {
+    Light,
+    Temperature,
+    Humidity,
+    Barometer,
+    Voc,
+    Co2,
+    Battery,
+    All
+}
+
 
 const LIGHT_MEASUREMENT_DELAY = 3000;
 const TEMPERATURE_MEASUREMENT_DELAY = 3000;
@@ -37,9 +48,10 @@ const I2C_ADDRESS_TAG_TEMPERATURE = 0x48;
 const I2C_ADDRESS_TAG_HUMIDITY = 0x40;
 const I2C_ADDRESS_TAG_BAROMETER = 0x60;
 const I2C_ADDRESS_TAG_VOC = 0x58;
-const I2C_ADDRESS_TCA9534 = 0x3B;
+const I2C_ADDRESS_MODULE_RELAY_TCA9534 = 0x3b;
 const I2C_ADDRESS_MODULE_CO2_EXP = 0x38;
-const I2C_ADDRESS_MODULE_CO2_FIFO = 0x4D;
+const I2C_ADDRESS_MODULE_CO2_FIFO = 0x4d;
+const I2C_ADDRESS_MODULE_LCD_TCA9534 = 0x3c
 
 /*** _____ ___   _____ ***/
 /***|_   _|__ \ / ____|***/
@@ -100,7 +112,6 @@ namespace helperFunctions {
     export function tca9534aWritePort(address: number, value: NumberFormat.UInt8BE) {
         let returnVal: number;
         returnVal = i2c.readNumber(address, [0x01, value]);
-
     }
 
     export function tca9534aSetPortDirection(address: number, direction: NumberFormat.UInt8BE) {
@@ -126,6 +137,92 @@ namespace helperFunctions {
         i2c.memoryWrite(address, 0x18, 0x07);
         i2c.memoryWrite(address, 0x10, 0x07);
         i2c.memoryWrite(address, 0x08, 0x11);
+    }
+}
+
+/*** _____ _   _ ______ _____            _____ _____  _____ _____  ***/
+/***|_   _| \ | |  ____|  __ \     /\   / ____|  __ \|_   _|  __ \ ***/
+/***  | | |  \| | |__  | |__) |   /  \ | |  __| |__) | | | | |  | |***/
+/***  | | | . ` |  __| |  _  /   / /\ \| | |_ |  _  /  | | | |  | |***/
+/***  | |_| |\  | |    | | \ \  / ____ \ |__| | | \ \ _| |_| |__| |***/
+/***|_____|_| \_|_|    |_|  \_\/_/    \_\_____|_|  \_\_____|_____/ ***/
+namespace infragridModule {
+
+}
+
+/*** _      _____ _____  ***/
+/***| |    / ____|  __ \ ***/
+/***| |   | |    | |  | |***/
+/***| |   | |    | |  | |***/
+/***| |___| |____| |__| |***/
+/***|______\_____|_____/ ***/
+namespace lcdModule {
+
+    export function init() {
+
+        let vcom: number = 0;
+        let framebuffer: number[] = [];
+
+        helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_LCD_TCA9534);
+        helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, ((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
+        helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_MODULE_LCD_TCA9534, (1 << 1) | (1 << 3));
+        pins.spiFrequency(1000000);
+        pins.spiFormat(8, 0);
+
+        let line: number;
+        let offs: number;
+        for (line = 0x01, offs = 1; line <= 128; line++ , offs += 18) {
+            // Fill the gate line addresses on the exact place in the buffer
+            framebuffer[offs] = bcLs013b7dh03Reverse(line);
+        }
+
+        let port = 245;
+        port &= ~(1 << 7);
+        port |= 1 << 7;
+
+        helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, port);
+
+        let col: number;
+        for (line = 0x01, offs = 2; line <= 128; line++ , offs += 18) {
+            for (col = 0; col < 16; col++) {
+                framebuffer[offs + col] = 0xff;
+            }
+        }
+
+        port = 245;
+        port &= ~(1 << 7);
+        helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, port);
+
+        framebuffer[0] = 0x80 | vcom;
+
+        pins.spiWrite(0)
+
+
+    }
+
+    /*function  moduleLcdCsPinSet(state: boolean) : boolean
+    {
+        if (!_bc_module_lcd_tca9534a_init()) {
+            return false;
+        }
+
+        if (!bc_tca9534a_write_pin(&_bc_module_lcd.tca9534a, _BC_MODULE_LCD_LED_DISP_CS_PIN, state)) {
+            _bc_module_lcd.is_tca9534a_initialized = false;
+
+            return false;
+        }
+
+        return true;
+    }*/
+
+
+
+    function bcLs013b7dh03Reverse(b: number): number {
+        b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
+        b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
+        b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
+
+        return b;
     }
 }
 
@@ -200,23 +297,23 @@ namespace relayModule {
 
     export function setState(state: RelayState) {
         if (!relayInit) {
-            helperFunctions.tca9534aInit(I2C_ADDRESS_TCA9534);
+            helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_RELAY_TCA9534);
 
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((0x40) | (0x10)));
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, ((0x40) | (0x10)));
 
-            helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_TCA9534, 0x00);
+            helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_MODULE_RELAY_TCA9534, 0x00);
 
             relayInit = true;
         }
 
         if (state == RelayState.On) {
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((0x10) | (0x20)));
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, ((0x10) | (0x20)));
         }
         else {
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, ((0x40) | (0x80)));
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, ((0x40) | (0x80)));
         }
         basic.pause(50);
-        helperFunctions.tca9534aWritePort(I2C_ADDRESS_TCA9534, 0);
+        helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, 0);
     }
 }
 
@@ -856,6 +953,31 @@ namespace hardwario {
     }
 
     /**
+    * Sets the delay between measurements on chosen sensor to value in ms.
+    */
+    //%block="change $sensorType measurement delay to $delay"
+    export function measurementDelay(sensorType: MeasurementDelays, delay: number) {
+        switch(sensorType) {
+            case MeasurementDelays.Light:
+                break;
+            case MeasurementDelays.Barometer:
+                break;
+            case MeasurementDelays.Battery:
+                break;
+            case MeasurementDelays.Co2:
+                break;
+            case MeasurementDelays.Humidity:
+                break;
+            case MeasurementDelays.Temperature:
+                break;
+            case MeasurementDelays.Voc:
+                break;
+            case MeasurementDelays.All:
+                break;
+        }
+    }
+
+    /**
     * Reads the current value of CO2 in air from the sensor on CO2 Module.
 	    * Returns concentration of CO2 in air.
     */
@@ -936,6 +1058,14 @@ namespace hardwario {
     }
 
     /**
+    * Sets the state of bi-stable relay on the Relay Module to on/off.
+    */
+    //%block="lcd"
+    export function lcdStart() {
+        lcdModule.init();
+    }
+
+    /**
     export function motionDetectorTask(pin: DigitalPin) {
         serial.writeLine("START");
         basic.forever(function () {
@@ -964,27 +1094,5 @@ namespace hardwario {
             }
         })
     }
-
-    export function lcd() {
-        helperFunctions.tca9534aInit(60);
-        helperFunctions.tca9534aWritePort(60, ((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
-        helperFunctions.tca9534aSetPortDirection(60, (1 << 1) | (1 << 3));
-        pins.spiFrequency(1000000);
-        pins.spiFormat(8, 3);
-
-        let port = 245;
-        port &= ~(1 << 7);
-        port |= 1 << 7;
-
-        i2c.memoryWrite(0, 0x01, port);
-
-    }
-
-    function bcLs013b7dh03Reverse(b: number): number {
-        b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
-        b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
-        b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
-
-        return b;
     }*/
 }
