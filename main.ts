@@ -275,7 +275,6 @@ namespace luxTag {
                     let lux: number = 0.01 * shiftedExponent * fractResult;
 
                     illuminanceVar = lux;
-                    serial.writeLine("LUX: " + illuminanceVar);
 
                     basic.pause(LIGHT_MEASUREMENT_DELAY);
 
@@ -386,7 +385,6 @@ namespace barometerTag {
                     let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
 
                     pressureVar = pascal;
-                    serial.writeLine("PRESSURE: " + pressureVar);
 
                     basic.pause(20);
 
@@ -415,7 +413,6 @@ namespace barometerTag {
                         let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
                         altitudeVar = meter;
 
-                        serial.writeLine('ALTITUDE: ' + altitudeVar);
                     }
 
                     basic.pause(BAROMETER_MEASUREMENT_DELAY);
@@ -477,7 +474,6 @@ namespace vocTag {
                 let tvoc = (outBuf[3] << 8) | outBuf[4];
 
                 tvocVar = tvoc;
-                serial.writeLine("VOC: " + tvocVar);
 
                 basic.pause(VOC_MEASUREMENT_DELAY);
             }
@@ -554,7 +550,6 @@ namespace vocLpTag {
                 let tvoc = (outBuf[0] << 8) | outBuf[1];
 
                 tvocVar = tvoc;
-                serial.writeLine("VOC-LP: " + tvocVar);
 
                 basic.pause(VOC_MEASUREMENT_DELAY);
             }
@@ -618,11 +613,8 @@ namespace humidityTag {
 
                 let raw = rh[0] << 8 | rh[1];
                 let percentage = -6 + 125 * raw / 65536
-                serial.writeNumber(percentage);
 
                 humidityVar = percentage;
-
-                serial.writeLine("HUMIDITY: " + humidityVar);
 
                 basic.pause(HUMIDITY_MEASUREMENT_DELAY);
             }
@@ -671,8 +663,9 @@ namespace temperatureTag {
                 tmp112 = t[0] + (t[1] / 100)
 
                 t = tmp112;
-                serial.writeLine("TEMP: " + t);
-
+                temperatureVar = t;
+                serial.writeLine("TEMP");
+                serial.writeNumber(t);
                 basic.pause(TEMPERATURE_MEASUREMENT_DELAY);
             }
         })
@@ -694,6 +687,7 @@ namespace batteryModule {
 
         if (!voltageMeasurementStarted) {
             startVoltageMeasurement(type);
+            voltageMeasurementStarted = true;
         }
         return voltage;
     }
@@ -721,7 +715,6 @@ namespace batteryModule {
                     pins.digitalWritePin(DigitalPin.P1, 0);
                     voltage = 3 / 1024 * result / 0.13;
                 }
-                serial.writeLine("VOLTAGE: " + voltage);
 
                 basic.pause(BATTERY_MEASUREMENT_DELAY);
             }
@@ -886,8 +879,6 @@ namespace co2Module {
 
                 co2ConcentrationVar = concentration;
 
-                serial.writeLine("CO2: " + co2ConcentrationVar);
-
                 basic.pause(CO2_MEASUREMENT_DELAY);
             }
         })
@@ -957,7 +948,7 @@ namespace hardwario {
     */
     //%block="change $sensorType measurement delay to $delay"
     export function measurementDelay(sensorType: MeasurementDelays, delay: number) {
-        switch(sensorType) {
+        switch (sensorType) {
             case MeasurementDelays.Light:
                 break;
             case MeasurementDelays.Barometer:
@@ -1066,15 +1057,15 @@ namespace hardwario {
     }
 
     /**
+    //%block="motion $pin"
     export function motionDetectorTask(pin: DigitalPin) {
-        serial.writeLine("START");
         basic.forever(function () {
             while (true) {
 
                 if (!motionInit) {
 
                     serial.writeLine("INIT");
-                    pins.setPull(pin, PinPullMode.PullNone);
+                    pins.setPull(pin, PinPullMode.PullUp);
                     motionInit = true;
                 }
 
@@ -1086,13 +1077,10 @@ namespace hardwario {
                     serial.writeLine("motion detected");
 
                     pins.digitalWritePin(pin, 0);
-                    basic.pause(100);
-                    pins.digitalReadPin(pin);
-
+                    basic.pause(50);
                 }
-                basic.pause(100);
+                basic.pause(1000);
             }
         })
-    }
     }*/
 }
