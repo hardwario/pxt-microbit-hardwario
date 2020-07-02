@@ -664,8 +664,6 @@ namespace temperatureTag {
 
                 t = tmp112;
                 temperatureVar = t;
-                serial.writeLine("TEMP");
-                serial.writeNumber(t);
                 basic.pause(TEMPERATURE_MEASUREMENT_DELAY);
             }
         })
@@ -1056,31 +1054,109 @@ namespace hardwario {
         lcdModule.init();
     }
 
-    /**
     //%block="motion $pin"
-    export function motionDetectorTask(pin: DigitalPin) {
+    export function motionDetectorTask() {
+
+        let dlPin : DigitalPin = DigitalPin.P8;
+        let serinPin : DigitalPin = DigitalPin.P16;
+
         basic.forever(function () {
             while (true) {
 
-                if (!motionInit) {
+                if (!motionInit) 
+                {
+                    pins.setEvents(serinPin, PinEventType.Edge)
 
                     serial.writeLine("INIT");
-                    pins.setPull(pin, PinPullMode.PullUp);
-                    motionInit = true;
+
+                    startMotionSensor(dlPin, serinPin);
+                    serial.writeLine("INIT ENDED");
                 }
+                
+                else
+                {
+                    let state: number;
+                    state = pins.digitalReadPin(dlPin);
+                    serial.writeNumber(state);
 
-                let motion: number = pins.digitalReadPin(pin);
-                serial.writeLine("Pohyb: " + motion);
+                    if(state)
+                    {
+                        serial.writeLine("motion detected");
 
-                if (motion) {
-
-                    serial.writeLine("motion detected");
-
-                    pins.digitalWritePin(pin, 0);
-                    basic.pause(50);
+                        pins.digitalWritePin(dlPin, 0);
+                        basic.pause(100);
+                        pins.digitalReadPin(dlPin);
+                        basic.pause(1500);
+                    }
+                    basic.pause(500);
                 }
-                basic.pause(1000);
             }
         })
-    }*/
+    }
+
+    function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin)
+    {
+        motionInit = true;
+        let sensitivity : number = 16;
+        let blindTime : number = 0;
+        let pulseCounter : number = 1;
+        let windowTime : number = 1;
+        
+
+        pins.digitalWritePin(serinPin, 0);
+        control.waitMicros(1000);
+
+        writeField(sensitivity, 8, serinPin);
+        writeField(blindTime, 4, serinPin);
+        writeField(pulseCounter, 2, serinPin);
+        writeField(windowTime, 2, serinPin);
+        writeField(2, 8, serinPin);
+        writeField(0, 8, serinPin);
+        writeField(16, 5, serinPin);
+
+        pins.digitalWritePin(serinPin, 0);
+        control.waitMicros(1000);
+
+        pins.setPull(dlPin, PinPullMode.PullDown);
+        pins.digitalReadPin(dlPin);
+        basic.pause(3000);
+
+    }
+
+    function writeBit(value : number, serinPin : DigitalPin)
+    {
+        if(value == 0)
+        {
+            pins.digitalWritePin(serinPin, 1);
+            control.waitMicros(5);
+            pins.digitalWritePin(serinPin, 0);
+            control.waitMicros(95);
+        }
+        else if(value == 1)
+        {
+            pins.digitalWritePin(serinPin, 1);
+            control.waitMicros(95);
+            pins.digitalWritePin(serinPin, 0);
+            control.waitMicros(5);
+        }
+    }
+
+    function writeField(value : number, len : number, serinPin : DigitalPin)
+    {
+        let bit : number;
+        for(let i = 0; i < len; i++)
+        {
+            if((value & (2 ** (len - i - 1))) == 0)
+            {
+                bit = 0;
+            }
+            else
+            {
+                bit = 1;
+            }
+            writeBit(bit, serinPin);
+        }
+
+    }
+
 }
