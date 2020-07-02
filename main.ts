@@ -275,7 +275,6 @@ namespace luxTag {
                     let lux: number = 0.01 * shiftedExponent * fractResult;
 
                     illuminanceVar = lux;
-                    serial.writeLine("LUX: " + illuminanceVar);
 
                     basic.pause(LIGHT_MEASUREMENT_DELAY);
 
@@ -386,7 +385,6 @@ namespace barometerTag {
                     let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
 
                     pressureVar = pascal;
-                    serial.writeLine("PRESSURE: " + pressureVar);
 
                     basic.pause(20);
 
@@ -415,7 +413,6 @@ namespace barometerTag {
                         let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
                         altitudeVar = meter;
 
-                        serial.writeLine('ALTITUDE: ' + altitudeVar);
                     }
 
                     basic.pause(BAROMETER_MEASUREMENT_DELAY);
@@ -477,7 +474,6 @@ namespace vocTag {
                 let tvoc = (outBuf[3] << 8) | outBuf[4];
 
                 tvocVar = tvoc;
-                serial.writeLine("VOC: " + tvocVar);
 
                 basic.pause(VOC_MEASUREMENT_DELAY);
             }
@@ -554,7 +550,6 @@ namespace vocLpTag {
                 let tvoc = (outBuf[0] << 8) | outBuf[1];
 
                 tvocVar = tvoc;
-                serial.writeLine("VOC-LP: " + tvocVar);
 
                 basic.pause(VOC_MEASUREMENT_DELAY);
             }
@@ -618,11 +613,8 @@ namespace humidityTag {
 
                 let raw = rh[0] << 8 | rh[1];
                 let percentage = -6 + 125 * raw / 65536
-                serial.writeNumber(percentage);
 
                 humidityVar = percentage;
-
-                serial.writeLine("HUMIDITY: " + humidityVar);
 
                 basic.pause(HUMIDITY_MEASUREMENT_DELAY);
             }
@@ -671,8 +663,7 @@ namespace temperatureTag {
                 tmp112 = t[0] + (t[1] / 100)
 
                 t = tmp112;
-                serial.writeLine("TEMP: " + t);
-
+                temperatureVar = t;
                 basic.pause(TEMPERATURE_MEASUREMENT_DELAY);
             }
         })
@@ -694,6 +685,7 @@ namespace batteryModule {
 
         if (!voltageMeasurementStarted) {
             startVoltageMeasurement(type);
+            voltageMeasurementStarted = true;
         }
         return voltage;
     }
@@ -721,7 +713,6 @@ namespace batteryModule {
                     pins.digitalWritePin(DigitalPin.P1, 0);
                     voltage = 3 / 1024 * result / 0.13;
                 }
-                serial.writeLine("VOLTAGE: " + voltage);
 
                 basic.pause(BATTERY_MEASUREMENT_DELAY);
             }
@@ -886,8 +877,6 @@ namespace co2Module {
 
                 co2ConcentrationVar = concentration;
 
-                serial.writeLine("CO2: " + co2ConcentrationVar);
-
                 basic.pause(CO2_MEASUREMENT_DELAY);
             }
         })
@@ -957,7 +946,7 @@ namespace hardwario {
     */
     //%block="change $sensorType measurement delay to $delay"
     export function measurementDelay(sensorType: MeasurementDelays, delay: number) {
-        switch(sensorType) {
+        switch (sensorType) {
             case MeasurementDelays.Light:
                 break;
             case MeasurementDelays.Barometer:
@@ -1065,34 +1054,109 @@ namespace hardwario {
         lcdModule.init();
     }
 
-    /**
-    export function motionDetectorTask(pin: DigitalPin) {
-        serial.writeLine("START");
+    //%block="motion $pin"
+    export function motionDetectorTask() {
+
+        let dlPin : DigitalPin = DigitalPin.P8;
+        let serinPin : DigitalPin = DigitalPin.P16;
+
         basic.forever(function () {
             while (true) {
 
-                if (!motionInit) {
+                if (!motionInit) 
+                {
+                    pins.setEvents(serinPin, PinEventType.Edge)
 
                     serial.writeLine("INIT");
-                    pins.setPull(pin, PinPullMode.PullNone);
-                    motionInit = true;
+
+                    startMotionSensor(dlPin, serinPin);
+                    serial.writeLine("INIT ENDED");
                 }
+                
+                else
+                {
+                    let state: number;
+                    state = pins.digitalReadPin(dlPin);
+                    serial.writeNumber(state);
 
-                let motion: number = pins.digitalReadPin(pin);
-                serial.writeLine("Pohyb: " + motion);
+                    if(state)
+                    {
+                        serial.writeLine("motion detected");
 
-                if (motion) {
-
-                    serial.writeLine("motion detected");
-
-                    pins.digitalWritePin(pin, 0);
-                    basic.pause(100);
-                    pins.digitalReadPin(pin);
-
+                        pins.digitalWritePin(dlPin, 0);
+                        basic.pause(100);
+                        pins.digitalReadPin(dlPin);
+                        basic.pause(1500);
+                    }
+                    basic.pause(500);
                 }
-                basic.pause(100);
             }
         })
     }
-    }*/
+
+    function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin)
+    {
+        motionInit = true;
+        let sensitivity : number = 16;
+        let blindTime : number = 0;
+        let pulseCounter : number = 1;
+        let windowTime : number = 1;
+        
+
+        pins.digitalWritePin(serinPin, 0);
+        control.waitMicros(1000);
+
+        writeField(sensitivity, 8, serinPin);
+        writeField(blindTime, 4, serinPin);
+        writeField(pulseCounter, 2, serinPin);
+        writeField(windowTime, 2, serinPin);
+        writeField(2, 8, serinPin);
+        writeField(0, 8, serinPin);
+        writeField(16, 5, serinPin);
+
+        pins.digitalWritePin(serinPin, 0);
+        control.waitMicros(1000);
+
+        pins.setPull(dlPin, PinPullMode.PullDown);
+        pins.digitalReadPin(dlPin);
+        basic.pause(3000);
+
+    }
+
+    function writeBit(value : number, serinPin : DigitalPin)
+    {
+        if(value == 0)
+        {
+            pins.digitalWritePin(serinPin, 1);
+            control.waitMicros(5);
+            pins.digitalWritePin(serinPin, 0);
+            control.waitMicros(95);
+        }
+        else if(value == 1)
+        {
+            pins.digitalWritePin(serinPin, 1);
+            control.waitMicros(95);
+            pins.digitalWritePin(serinPin, 0);
+            control.waitMicros(5);
+        }
+    }
+
+    function writeField(value : number, len : number, serinPin : DigitalPin)
+    {
+        let bit : number;
+        for(let i = 0; i < len; i++)
+        {
+            if((value & (2 ** (len - i - 1))) == 0)
+            {
+                bit = 0;
+            }
+            else
+            {
+                bit = 1;
+            }
+            writeBit(bit, serinPin);
+        }
+
+    }
+
 }
