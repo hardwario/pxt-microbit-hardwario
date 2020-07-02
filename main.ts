@@ -1,5 +1,5 @@
 /**
-* Jakub Smejkal, Karel Blavka @ HARDWARIO s.r.o.
+* Pavel Hübner, Karel Blavka, Jakub Smejkal @ HARDWARIO s.r.o.
 * March 2020
 * https://github.com/bigclownprojects/pxt-HARDWARIO
 * Development environment specifics:
@@ -15,6 +15,10 @@
 enum RelayState {
     On,
     Off
+}
+
+enum Events {
+    Movement = 150,
 }
 
 enum BatteryModuleType {
@@ -224,6 +228,16 @@ namespace lcdModule {
 
         return b;
     }
+}
+
+/***_____ _____ _____    ***/
+/***|  __ \_   _|  __ \  ***/
+/***| |__) || | | |__) | ***/
+/***|  ___/ | | |  _  /  ***/
+/***| |    _| |_| | \ \  ***/
+/***|_|   |_____|_|  \_\ ***/                   
+namespace pirModule {
+
 }
 
 /***| |    | |  | \ \ / / ***/
@@ -1054,8 +1068,30 @@ namespace hardwario {
         lcdModule.init();
     }
 
-    //%block="motion $pin"
-    export function motionDetectorTask() {
+
+
+    /**
+     * Registers code to run when the device notifies about a particular event.
+     * @param event event description
+     * @param body code handler when event is triggered
+     */
+
+    //%block="on movement"
+    export function onMovement(body: () => void) {
+        control.onEvent(Events.Movement, -10, body);
+    }
+
+
+    /*
+        TODO: SPI config
+    */
+    //%block="motion set sensitivity: $sensitivity|set Blind Time: $blindTime|set Pulse Conunter: $pulseCounter|set Window Time: $windowTime"
+    //% sensitivity.min=0 sensitivity.max=255
+    //% blindTime.min=0 blindTime.max=15
+    //% pulseCounter.min=0 pulseCounter.max=3
+    //% windowTime.min=0 windowTime.max=3
+    export function motionDetectorTask(sensitivity : number, blindTime : number, 
+                                       pulseCounter : number, windowTime : number) {
 
         let dlPin : DigitalPin = DigitalPin.P8;
         let serinPin : DigitalPin = DigitalPin.P16;
@@ -1068,7 +1104,7 @@ namespace hardwario {
 
                 if (!motionInit) 
                 {
-                    startMotionSensor(dlPin, serinPin);
+                    startMotionSensor(dlPin, serinPin, sensitivity, blindTime, pulseCounter, windowTime);
 
                     motionInit = true;
                 }
@@ -1079,7 +1115,8 @@ namespace hardwario {
 
                     if (state != 0 && oldState == 0)
                     {
-                        serial.writeLine("Motion detected");
+                        serial.writeLine("motion detected");
+                        control.raiseEvent(Events.Movement, -10);
 
                         pins.digitalWritePin(dlPin, 0);
                         control.waitMicros(100);
@@ -1093,15 +1130,11 @@ namespace hardwario {
         })
     }
 
-    function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin)
-    {
+    function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin,
+                               sensitivity : number, blindTime : number, 
+                               pulseCounter : number, windowTime : number) {
         pins.setPull(dlPin, PinPullMode.PullNone);
         pins.digitalReadPin(dlPin);
-    
-        let sensitivity : number = 32;
-        let blindTime : number = 0;
-        let pulseCounter : number = 0;
-        let windowTime : number = 0;
     
         pins.digitalWritePin(serinPin, 0);
         control.waitMicros(1000);
@@ -1118,8 +1151,7 @@ namespace hardwario {
         control.waitMicros(1000);
     }
 
-    function writeBit(value : number, serinPin : DigitalPin)
-    {
+    function writeBit(value : number, serinPin : DigitalPin) {
         if (value == 0)
         {
             pins.digitalWritePin(serinPin, 1);
@@ -1136,8 +1168,7 @@ namespace hardwario {
         }
     }
 
-    function writeField(value : number, len : number, serinPin : DigitalPin)
-    {
+    function writeField(value : number, len : number, serinPin : DigitalPin) {
         let bit : number;
         for (let i = 0; i < len; i++)
         {
