@@ -930,7 +930,7 @@ namespace co2Module {
 
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
 namespace hardwario {
-    let motionInit: boolean = false;
+    //let motionInit: boolean = false;
 
     /**
     * Reads the current value of light intensity from the sensor.
@@ -1061,34 +1061,33 @@ namespace hardwario {
         let serinPin : DigitalPin = DigitalPin.P16;
 
         basic.forever(function () {
+            let motionInit: boolean = false;
+            let oldState: number = 0;
+
             while (true) {
 
                 if (!motionInit) 
                 {
-                    pins.setEvents(serinPin, PinEventType.Edge)
-
-                    serial.writeLine("INIT");
-
                     startMotionSensor(dlPin, serinPin);
-                    serial.writeLine("INIT ENDED");
+
+                    motionInit = true;
                 }
-                
                 else
                 {
                     let state: number;
                     state = pins.digitalReadPin(dlPin);
-                    serial.writeNumber(state);
 
-                    if(state)
+                    if (state != 0 && oldState == 0)
                     {
-                        serial.writeLine("motion detected");
+                        serial.writeLine("Motion detected");
 
                         pins.digitalWritePin(dlPin, 0);
-                        basic.pause(100);
+                        control.waitMicros(100);
                         pins.digitalReadPin(dlPin);
-                        basic.pause(1500);
+                        control.waitMicros(100);
                     }
-                    basic.pause(500);
+
+                    oldState = state;
                 }
             }
         })
@@ -1096,13 +1095,14 @@ namespace hardwario {
 
     function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin)
     {
-        motionInit = true;
-        let sensitivity : number = 16;
+        pins.setPull(dlPin, PinPullMode.PullNone);
+        pins.digitalReadPin(dlPin);
+    
+        let sensitivity : number = 32;
         let blindTime : number = 0;
-        let pulseCounter : number = 1;
-        let windowTime : number = 1;
-        
-
+        let pulseCounter : number = 0;
+        let windowTime : number = 0;
+    
         pins.digitalWritePin(serinPin, 0);
         control.waitMicros(1000);
 
@@ -1110,29 +1110,24 @@ namespace hardwario {
         writeField(blindTime, 4, serinPin);
         writeField(pulseCounter, 2, serinPin);
         writeField(windowTime, 2, serinPin);
-        writeField(2, 8, serinPin);
-        writeField(0, 8, serinPin);
+        writeField(2, 2, serinPin);
+        writeField(0, 2, serinPin);
         writeField(16, 5, serinPin);
 
         pins.digitalWritePin(serinPin, 0);
         control.waitMicros(1000);
-
-        pins.setPull(dlPin, PinPullMode.PullDown);
-        pins.digitalReadPin(dlPin);
-        basic.pause(3000);
-
     }
 
     function writeBit(value : number, serinPin : DigitalPin)
     {
-        if(value == 0)
+        if (value == 0)
         {
             pins.digitalWritePin(serinPin, 1);
             control.waitMicros(5);
             pins.digitalWritePin(serinPin, 0);
             control.waitMicros(95);
         }
-        else if(value == 1)
+        else if (value == 1)
         {
             pins.digitalWritePin(serinPin, 1);
             control.waitMicros(95);
@@ -1144,9 +1139,9 @@ namespace hardwario {
     function writeField(value : number, len : number, serinPin : DigitalPin)
     {
         let bit : number;
-        for(let i = 0; i < len; i++)
+        for (let i = 0; i < len; i++)
         {
-            if((value & (2 ** (len - i - 1))) == 0)
+            if ((value & (2 ** (len - i - 1))) == 0)
             {
                 bit = 0;
             }
@@ -1156,7 +1151,5 @@ namespace hardwario {
             }
             writeBit(bit, serinPin);
         }
-
     }
-
 }
