@@ -52,6 +52,7 @@ const I2C_ADDRESS_TAG_TEMPERATURE = 0x48;
 const I2C_ADDRESS_TAG_HUMIDITY = 0x40;
 const I2C_ADDRESS_TAG_BAROMETER = 0x60;
 const I2C_ADDRESS_TAG_VOC = 0x58;
+const I2C_ADDRESS_MODULE_INFRAGRID = 0x68;
 const I2C_ADDRESS_MODULE_RELAY_TCA9534 = 0x3b;
 const I2C_ADDRESS_MODULE_CO2_EXP = 0x38;
 const I2C_ADDRESS_MODULE_CO2_FIFO = 0x4d;
@@ -113,9 +114,35 @@ namespace helperFunctions {
         }
     }
 
+    export function tca9534aWritePin(address: number, pin: NumberFormat.UInt8BE, value: number) {
+        let port: number = 0;
+
+        port &= ~(1 << pin);
+
+        if (value != 0)
+        {
+            port |= 1 << pin;
+        }
+
+        tca9534aWritePort(address, port);
+    }
+
     export function tca9534aWritePort(address: number, value: NumberFormat.UInt8BE) {
         let returnVal: number;
         returnVal = i2c.readNumber(address, [0x01, value]);
+    }
+
+    export function tca9534aSetPinDirection(address: number, pin: NumberFormat.UInt8BE, direction: NumberFormat.UInt8BE) {
+        
+        let portDirection : number = direction
+        portDirection &= ~(1 << pin); 
+
+        if (direction == 1)
+        {
+            portDirection |= 1 << pin;
+        }
+
+        tca9534aSetPortDirection(address, portDirection);
     }
 
     export function tca9534aSetPortDirection(address: number, direction: NumberFormat.UInt8BE) {
@@ -151,7 +178,80 @@ namespace helperFunctions {
 /***  | |_| |\  | |    | | \ \  / ____ \ |__| | | \ \ _| |_| |__| |***/
 /***|_____|_| \_|_|    |_|  \_\/_/    \_\_____|_|  \_\_____|_____/ ***/
 namespace infragridModule {
+    let buf : Buffer;
 
+    export function getTemperatureCelsius() {
+        //let arr : number[] = helpers.bufferToArray(buf, NumberFormat.Int16BE)
+
+        for (let i = 0; i < 64; i++) {
+            let temperature : NumberFormat.Float32BE;
+            let temporary_data : NumberFormat.Int16BE = buf[i];
+
+            if (temporary_data > 0x200)
+            {
+                temperature = (-temporary_data + 0xfff) * -0.25;
+            }
+            else
+            {
+                temperature = temporary_data * 0.25;
+            }
+
+            //values[i] = temperature;
+            serial.writeNumber(temperature);
+
+            if(i % 8 == 0) {
+                serial.writeLine("");
+            }
+        }   
+
+    }
+
+    export function init() {
+        serial.writeLine("JSEM TU");
+        helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_INFRAGRID);
+        helperFunctions.tca9534aSetPinDirection(I2C_ADDRESS_MODULE_INFRAGRID, 7, 0);
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x00);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x50);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x45);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x57);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x07, 0x20);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x00);
+
+        basic.pause(50);
+
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
+        basic.pause(50);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x00, 0x00);
+
+        basic.pause(50);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x3f);
+
+        basic.pause(10);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x30);
+
+        basic.pause(110);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x01);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x00);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x50);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x45);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x57);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x07, 0x20);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x00);
+
+        basic.pause(5);
+
+        buf = i2c.readBuffer(I2C_ADDRESS_MODULE_INFRAGRID, [0x80], 64 * 2);
+
+    }
 }
 
 /*** _      _____ _____  ***/
@@ -162,10 +262,11 @@ namespace infragridModule {
 /***|______\_____|_____/ ***/
 namespace lcdModule {
 
+    let framebuffer: number[] = [];
+
     export function init() {
 
-        let vcom: number = 0;
-        let framebuffer: number[] = [];
+        /*let vcom: number = 0;
 
         helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_LCD_TCA9534);
         helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, ((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
@@ -186,12 +287,8 @@ namespace lcdModule {
 
         helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, port);
 
-        let col: number;
-        for (line = 0x01, offs = 2; line <= 128; line++ , offs += 18) {
-            for (col = 0; col < 16; col++) {
-                framebuffer[offs + col] = 0xff;
-            }
-        }
+
+        lcdClear();
 
         port = 245;
         port &= ~(1 << 7);
@@ -199,17 +296,27 @@ namespace lcdModule {
 
         framebuffer[0] = 0x80 | vcom;
 
-        pins.spiWrite(0)
+        pins.spiTransfer(null, null)
+        pins.spiWrite(0);*/
 
+        pins.spiWrite(8192);
 
     }
 
-    /*function  moduleLcdCsPinSet(state: boolean) : boolean
-    {
-        if (!_bc_module_lcd_tca9534a_init()) {
-            return false;
-        }
+    function lcdClear() {
+        let line: number;
+        let offs: number;
+        let col: number;
 
+        for (line = 0x01, offs = 2; line <= 128; line++ , offs += 18) {
+            for(col = 0; col < 16; col++) {
+                framebuffer[offs + col] = 0xff;
+            }
+        }
+    }
+
+    /*function moduleLcdCsPinSet(state: boolean) : boolean
+    {
         if (!bc_tca9534a_write_pin(&_bc_module_lcd.tca9534a, _BC_MODULE_LCD_LED_DISP_CS_PIN, state)) {
             _bc_module_lcd.is_tca9534a_initialized = false;
 
@@ -1119,6 +1226,16 @@ namespace hardwario {
     //%block="lcd"
     export function lcdStart() {
         lcdModule.init();
+    }
+
+    /**
+    * 
+    */
+    //%block="infragrid"
+    export function infragrid() {
+        infragridModule.init();
+        basic.pause(2000);
+        infragridModule.getTemperatureCelsius();
     }
 
 
