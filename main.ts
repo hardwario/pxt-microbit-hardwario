@@ -238,6 +238,59 @@ namespace lcdModule {
 /***|_|   |_____|_|  \_\ ***/                   
 namespace pirModule {
 
+    export function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin,
+                               sensitivity : number, blindTime : number, 
+                               pulseCounter : number, windowTime : number) {
+        pins.setPull(dlPin, PinPullMode.PullNone);
+        pins.digitalReadPin(dlPin);
+    
+        pins.digitalWritePin(serinPin, 0);
+        control.waitMicros(1000);
+
+        writeField(sensitivity, 8, serinPin);
+        writeField(blindTime, 4, serinPin);
+        writeField(pulseCounter, 2, serinPin);
+        writeField(windowTime, 2, serinPin);
+        writeField(2, 2, serinPin);
+        writeField(0, 2, serinPin);
+        writeField(16, 5, serinPin);
+
+        pins.digitalWritePin(serinPin, 0);
+        control.waitMicros(1000);
+    }
+
+    function writeBit(value : number, serinPin : DigitalPin) {
+        if (value == 0)
+        {
+            pins.digitalWritePin(serinPin, 1);
+            control.waitMicros(5);
+            pins.digitalWritePin(serinPin, 0);
+            control.waitMicros(95);
+        }
+        else if (value == 1)
+        {
+            pins.digitalWritePin(serinPin, 1);
+            control.waitMicros(95);
+            pins.digitalWritePin(serinPin, 0);
+            control.waitMicros(5);
+        }
+    }
+
+    function writeField(value : number, len : number, serinPin : DigitalPin) {
+        let bit : number;
+        for (let i = 0; i < len; i++)
+        {
+            if ((value & (2 ** (len - i - 1))) == 0)
+            {
+                bit = 0;
+            }
+            else
+            {
+                bit = 1;
+            }
+            writeBit(bit, serinPin);
+        }
+    }
 }
 
 /***| |    | |  | \ \ / / ***/
@@ -1104,7 +1157,7 @@ namespace hardwario {
 
                 if (!motionInit) 
                 {
-                    startMotionSensor(dlPin, serinPin, sensitivity, blindTime, pulseCounter, windowTime);
+                    pirModule.startMotionSensor(dlPin, serinPin, sensitivity, blindTime, pulseCounter, windowTime);
 
                     motionInit = true;
                 }
@@ -1115,7 +1168,6 @@ namespace hardwario {
 
                     if (state != 0 && oldState == 0)
                     {
-                        serial.writeLine("motion detected");
                         control.raiseEvent(Events.Movement, -10);
 
                         pins.digitalWritePin(dlPin, 0);
@@ -1128,59 +1180,5 @@ namespace hardwario {
                 }
             }
         })
-    }
-
-    function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin,
-                               sensitivity : number, blindTime : number, 
-                               pulseCounter : number, windowTime : number) {
-        pins.setPull(dlPin, PinPullMode.PullNone);
-        pins.digitalReadPin(dlPin);
-    
-        pins.digitalWritePin(serinPin, 0);
-        control.waitMicros(1000);
-
-        writeField(sensitivity, 8, serinPin);
-        writeField(blindTime, 4, serinPin);
-        writeField(pulseCounter, 2, serinPin);
-        writeField(windowTime, 2, serinPin);
-        writeField(2, 2, serinPin);
-        writeField(0, 2, serinPin);
-        writeField(16, 5, serinPin);
-
-        pins.digitalWritePin(serinPin, 0);
-        control.waitMicros(1000);
-    }
-
-    function writeBit(value : number, serinPin : DigitalPin) {
-        if (value == 0)
-        {
-            pins.digitalWritePin(serinPin, 1);
-            control.waitMicros(5);
-            pins.digitalWritePin(serinPin, 0);
-            control.waitMicros(95);
-        }
-        else if (value == 1)
-        {
-            pins.digitalWritePin(serinPin, 1);
-            control.waitMicros(95);
-            pins.digitalWritePin(serinPin, 0);
-            control.waitMicros(5);
-        }
-    }
-
-    function writeField(value : number, len : number, serinPin : DigitalPin) {
-        let bit : number;
-        for (let i = 0; i < len; i++)
-        {
-            if ((value & (2 ** (len - i - 1))) == 0)
-            {
-                bit = 0;
-            }
-            else
-            {
-                bit = 1;
-            }
-            writeBit(bit, serinPin);
-        }
     }
 }
