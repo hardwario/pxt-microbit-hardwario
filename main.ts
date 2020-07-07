@@ -1,7 +1,7 @@
 /**
 * Pavel Hübner, Karel Blavka, Jakub Smejkal @ HARDWARIO s.r.o.
 * March 2020
-* https://github.com/bigclownprojects/pxt-HARDWARIO
+* https://github.com/hardwario-projects/pxt-HARDWARIO
 * Development environment specifics:
 * Written in Microsoft PXT
 *
