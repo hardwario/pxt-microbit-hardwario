@@ -181,10 +181,20 @@ namespace infragridModule {
     let buf : Buffer;
 
     export function getTemperatureCelsius() {
-        //let arr : number[] = helpers.bufferToArray(buf, NumberFormat.Int16BE)
+        let arr : number[] = helpers.bufferToArray(buf, NumberFormat.Int16BE);
+
+        serial.writeLine("After buffer load");
+        basic.pause(1000);
+        serial.writeNumber(arr.length);
+        serial.writeLine("BUFF LEN");
+
+        basic.pause(1000);
+
+        serial.writeNumber(arr[5]);
+        serial.writeLine("BUFF 5 item");
 
         for (let i = 0; i < 64; i++) {
-            let temperature : NumberFormat.Float32BE;
+            /*let temperature : NumberFormat.Float32BE;
             let temporary_data : NumberFormat.Int16BE = buf[i];
 
             if (temporary_data > 0x200)
@@ -194,62 +204,69 @@ namespace infragridModule {
             else
             {
                 temperature = temporary_data * 0.25;
-            }
+            }*/
 
             //values[i] = temperature;
-            serial.writeNumber(temperature);
+            serial.writeString(arr[i] + " ");
 
             if(i % 8 == 0) {
                 serial.writeLine("");
             }
-        }   
+        }
 
     }
 
     export function init() {
-        serial.writeLine("JSEM TU");
         helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_INFRAGRID);
         helperFunctions.tca9534aSetPinDirection(I2C_ADDRESS_MODULE_INFRAGRID, 7, 0);
         helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
 
         i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x00);
 
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x50);
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x45);
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x57);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x03, 0x00);
+
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x50);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x45);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x57);
         i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x07, 0x20);
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x00);
+        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x00);
 
-        basic.pause(50);
+        basic.pause(200);
 
-        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
-        basic.pause(50);
+        basic.forever(function () {
+            serial.writeLine("JSEM TU");
 
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x00, 0x00);
+            helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
+            basic.pause(50);
 
-        basic.pause(50);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x00, 0x00);
+            basic.pause(50);
 
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x3f);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x3f);
+            basic.pause(10);
 
-        basic.pause(10);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x30);
+            basic.pause(110);
 
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x30);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x01);
 
-        basic.pause(110);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x03, 0x00);
 
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x01);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x50);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x45);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x57);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x07, 0x20);
+            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x00);
+            basic.pause(5);
 
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x00);
+            buf = i2c.readBuffer(I2C_ADDRESS_MODULE_INFRAGRID, [0x80], 64 * 2);
 
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x50);
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x45);
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x57);
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x07, 0x20);
-        i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0xf1, 0x00);
+            basic.pause(2000);
+            getTemperatureCelsius();
+            basic.pause(2000);
 
-        basic.pause(5);
-
-        buf = i2c.readBuffer(I2C_ADDRESS_MODULE_INFRAGRID, [0x80], 64 * 2);
+        })
+        
 
     }
 }
@@ -1234,8 +1251,6 @@ namespace hardwario {
     //%block="infragrid"
     export function infragrid() {
         infragridModule.init();
-        basic.pause(2000);
-        infragridModule.getTemperatureCelsius();
     }
 
 
