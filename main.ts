@@ -1121,7 +1121,6 @@ namespace co2Module {
 
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
 namespace hardwario {
-    //let motionInit: boolean = false;
 
     /**
     * Reads the current value of light intensity from the sensor.
@@ -1241,9 +1240,10 @@ namespace hardwario {
     * Sets the state of bi-stable relay on the Relay Module to on/off.
     */
     //%block="lcd"
-    export function lcdStart() {
+    /*export function lcdStart() {
         lcdModule.init();
-    }
+    }*/
+    
 
     /**
     * 
@@ -1256,11 +1256,9 @@ namespace hardwario {
 
 
     /**
-     * Registers code to run when the device notifies about a particular event.
-     * @param event event description
-     * @param body code handler when event is triggered
+     * Registers code to run when there is a movement registered by PIR motion detector on PIR module. 
+     * You have to run Motion block at the Start or anywhere before this event can occure because the PIR Module is not initialized by default.
      */
-
     //%block="on movement"
     export function onMovement(body: () => void) {
         control.onEvent(Events.Movement, -10, body);
