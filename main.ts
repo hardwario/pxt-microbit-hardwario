@@ -38,13 +38,13 @@ enum MeasurementDelays {
 }
 
 
-const LIGHT_MEASUREMENT_DELAY = 3000;
-const TEMPERATURE_MEASUREMENT_DELAY = 3000;
-const HUMIDITY_MEASUREMENT_DELAY = 3000;
-const BAROMETER_MEASUREMENT_DELAY = 3000;
-const VOC_MEASUREMENT_DELAY = 3000;
-const CO2_MEASUREMENT_DELAY = 3000;
-const BATTERY_MEASUREMENT_DELAY = 3000;
+let LIGHT_MEASUREMENT_DELAY : number = 3000;
+let TEMPERATURE_MEASUREMENT_DELAY : number = 3000;
+let HUMIDITY_MEASUREMENT_DELAY : number = 3000;
+let BAROMETER_MEASUREMENT_DELAY : number = 3000;
+let VOC_MEASUREMENT_DELAY : number = 3000;
+let CO2_MEASUREMENT_DELAY : number = 3000;
+let BATTERY_MEASUREMENT_DELAY : number = 3000;
 
 
 const I2C_ADDRESS_TAG_LUX = 0x44;
@@ -234,7 +234,6 @@ namespace infragridModule {
         basic.pause(200);
 
         basic.forever(function () {
-            serial.writeLine("JSEM TU");
 
             helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
             basic.pause(50);
@@ -279,11 +278,12 @@ namespace infragridModule {
 /***|______\_____|_____/ ***/
 namespace lcdModule {
 
-    let framebuffer: number[] = [];
+    let framebuffer: NumberFormat.UInt8BE[] = [];
 
     export function init() {
 
-        /*let vcom: number = 0;
+        serial.writeLine("INIT");
+        let vcom: number = 0;
 
         helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_LCD_TCA9534);
         helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, ((1 << 0) | (1 << 7) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6)));
@@ -294,29 +294,22 @@ namespace lcdModule {
         let line: number;
         let offs: number;
         for (line = 0x01, offs = 1; line <= 128; line++ , offs += 18) {
-            // Fill the gate line addresses on the exact place in the buffer
+            serial.writeLine("CYCLE LCD");
             framebuffer[offs] = bcLs013b7dh03Reverse(line);
         }
-
-        let port = 245;
-        port &= ~(1 << 7);
-        port |= 1 << 7;
-
-        helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, port);
-
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 1)
 
         lcdClear();
+        serial.writeLine("CLEAR");
 
-        port = 245;
-        port &= ~(1 << 7);
-        helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, port);
+        lcdDrawPixel(8, 12, 150);
 
-        framebuffer[0] = 0x80 | vcom;
+        serial.writeNumbers(framebuffer);
+
+        /*framebuffer[0] = 0x80 | vcom;
 
         pins.spiTransfer(null, null)
         pins.spiWrite(0);*/
-
-        pins.spiWrite(8192);
 
     }
 
@@ -329,6 +322,26 @@ namespace lcdModule {
             for(col = 0; col < 16; col++) {
                 framebuffer[offs + col] = 0xff;
             }
+        }
+    }
+
+    function lcdDrawPixel(x : number, y : number, color : number) {
+        // Skip mode byte + addr byte
+        let byteIndex : number = 2;
+        // Skip lines
+        byteIndex += y * 18;
+        // Select column byte
+        byteIndex += x / 8;
+
+        let bitMask : number = 1 << (7 - (x % 8));
+
+        if (color == 0)
+        {
+            framebuffer[byteIndex] |= bitMask;
+        }
+        else
+        {
+            framebuffer[byteIndex] &= ~bitMask;
         }
     }
 
@@ -1136,22 +1149,38 @@ namespace hardwario {
     */
     //%block="change $sensorType measurement delay to $delay"
     export function measurementDelay(sensorType: MeasurementDelays, delay: number) {
+        delay = delay * 1000;
+
         switch (sensorType) {
             case MeasurementDelays.Light:
+                LIGHT_MEASUREMENT_DELAY = delay;
                 break;
             case MeasurementDelays.Barometer:
+                BAROMETER_MEASUREMENT_DELAY = delay;
                 break;
             case MeasurementDelays.Battery:
+                BATTERY_MEASUREMENT_DELAY = delay;
                 break;
             case MeasurementDelays.Co2:
+                CO2_MEASUREMENT_DELAY = delay;
                 break;
             case MeasurementDelays.Humidity:
+                HUMIDITY_MEASUREMENT_DELAY = delay;
                 break;
             case MeasurementDelays.Temperature:
+                TEMPERATURE_MEASUREMENT_DELAY = delay;
                 break;
             case MeasurementDelays.Voc:
+                VOC_MEASUREMENT_DELAY = delay;
                 break;
             case MeasurementDelays.All:
+                LIGHT_MEASUREMENT_DELAY = delay;
+                BAROMETER_MEASUREMENT_DELAY = delay;
+                BATTERY_MEASUREMENT_DELAY = delay;
+                CO2_MEASUREMENT_DELAY = delay;
+                HUMIDITY_MEASUREMENT_DELAY = delay;
+                TEMPERATURE_MEASUREMENT_DELAY = delay;
+                VOC_MEASUREMENT_DELAY = delay;
                 break;
         }
     }
@@ -1240,9 +1269,9 @@ namespace hardwario {
     * Sets the state of bi-stable relay on the Relay Module to on/off.
     */
     //%block="lcd"
-    /*export function lcdStart() {
+    export function lcdStart() {
         lcdModule.init();
-    }*/
+    }
     
 
     /**
@@ -1268,11 +1297,11 @@ namespace hardwario {
     /*
         TODO: SPI config
     */
-    //%block="motion set sensitivity: $sensitivity|set Blind Time: $blindTime|set Pulse Conunter: $pulseCounter|set Window Time: $windowTime"
-    //% sensitivity.min=0 sensitivity.max=255
-    //% blindTime.min=0 blindTime.max=15
-    //% pulseCounter.min=0 pulseCounter.max=3
-    //% windowTime.min=0 windowTime.max=3
+    //%block="configure PIR module || sensitivity: $sensitivity|set Blind Time: $blindTime|set Pulse Conunter: $pulseCounter|set Window Time: $windowTime"
+    //% sensitivity.min=0 sensitivity.max=255 sensitivity.defl=35
+    //% blindTime.min=0 blindTime.max=15 blindTime.defl=0
+    //% pulseCounter.min=0 pulseCounter.max=3 pulseCounter.defl=0
+    //% windowTime.min=0 windowTime.max=3 windowTime.defl=0
     export function motionDetectorTask(sensitivity : number, blindTime : number, 
                                        pulseCounter : number, windowTime : number) {
 
