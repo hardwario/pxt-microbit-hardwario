@@ -1,5 +1,5 @@
 /**
-* Pavel Hübner, Karel Blavka, Jakub Smejkal @ HARDWARIO s.r.o.
+* Martin Hubáček, Pavel Hübner, Karel Blavka, Jakub Smejkal @ HARDWARIO s.r.o.
 * March 2020
 * https://github.com/hardwario-projects/pxt-HARDWARIO
 * Development environment specifics:
@@ -52,11 +52,17 @@ const I2C_ADDRESS_TAG_TEMPERATURE = 0x48;
 const I2C_ADDRESS_TAG_HUMIDITY = 0x40;
 const I2C_ADDRESS_TAG_BAROMETER = 0x60;
 const I2C_ADDRESS_TAG_VOC = 0x58;
+const I2C_ADDRESS_MODULE_INFRAGRID_TCA9534 = 0x23;
 const I2C_ADDRESS_MODULE_INFRAGRID = 0x68;
 const I2C_ADDRESS_MODULE_RELAY_TCA9534 = 0x3b;
 const I2C_ADDRESS_MODULE_CO2_EXP = 0x38;
 const I2C_ADDRESS_MODULE_CO2_FIFO = 0x4d;
-const I2C_ADDRESS_MODULE_LCD_TCA9534 = 0x3c
+const I2C_ADDRESS_MODULE_LCD_TCA9534 = 0x3c;
+
+let lcdPinSetUp : number = 0;
+let infragridPinSetUp : number = 0;
+let infragridDirection : number = 0;
+
 
 /*** _____ ___   _____ ***/
 /***|_   _|__ \ / ____|***/
@@ -115,7 +121,7 @@ namespace helperFunctions {
     }
 
     export function tca9534aWritePin(address: number, pin: NumberFormat.UInt8BE, value: number) {
-        let port: number = 0;
+        let port: number = infragridPinSetUp;
 
         port &= ~(1 << pin);
 
@@ -129,6 +135,8 @@ namespace helperFunctions {
 
     export function tca9534aWritePort(address: number, value: NumberFormat.UInt8BE) {
         let returnVal: number;
+        infragridPinSetUp = value;
+
         returnVal = i2c.readNumber(address, [0x01, value]);
     }
 
@@ -181,21 +189,9 @@ namespace infragridModule {
     let buf : Buffer;
 
     export function getTemperatureCelsius() {
-        let arr : number[] = helpers.bufferToArray(buf, NumberFormat.Int16BE);
-
-        serial.writeLine("After buffer load");
-        basic.pause(1000);
-        serial.writeNumber(arr.length);
-        serial.writeLine("BUFF LEN");
-
-        basic.pause(1000);
-
-        serial.writeNumber(arr[5]);
-        serial.writeLine("BUFF 5 item");
-
         for (let i = 0; i < 64; i++) {
-            /*let temperature : NumberFormat.Float32BE;
-            let temporary_data : NumberFormat.Int16BE = buf[i];
+            let temperature : NumberFormat.Float32BE;
+            let temporary_data : NumberFormat.Int16BE =  buf.getNumber(NumberFormat.Int16BE, i);
 
             if (temporary_data > 0x200)
             {
@@ -204,11 +200,8 @@ namespace infragridModule {
             else
             {
                 temperature = temporary_data * 0.25;
-            }*/
-
-            //values[i] = temperature;
-            serial.writeString(arr[i] + " ");
-
+            }
+            serial.writeString(temperature + " ");
             if(i % 8 == 0) {
                 serial.writeLine("");
             }
@@ -216,10 +209,12 @@ namespace infragridModule {
 
     }
 
+    //TODO: SLEEP MODE
     export function init() {
-        helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_INFRAGRID);
-        helperFunctions.tca9534aSetPinDirection(I2C_ADDRESS_MODULE_INFRAGRID, 7, 0);
-        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
+
+        helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_INFRAGRID_TCA9534);
+        helperFunctions.tca9534aSetPinDirection(I2C_ADDRESS_MODULE_INFRAGRID_TCA9534, 7, 0);
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID_TCA9534, 7, 1);
 
         i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x00);
 
@@ -233,40 +228,39 @@ namespace infragridModule {
 
         basic.pause(200);
 
-        basic.forever(function () {
+        control.inBackground(function () {
+            while (true) {
+                serial.writeLine("START");
+                /*helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID_TCA9534, 7, 1);
+                basic.pause(50);
 
-            helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID, 7, 1);
-            basic.pause(50);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x00, 0x00);
+                basic.pause(50);
 
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x00, 0x00);
-            basic.pause(50);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x3f);
+                basic.pause(10);
 
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x3f);
-            basic.pause(10);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x30);
+                basic.pause(110);
 
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x01, 0x30);
-            basic.pause(110);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x01);
 
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x02, 0x01);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x03, 0x00);
 
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x03, 0x00);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x50);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x45);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x57);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x07, 0x20);
+                i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x00);
+                basic.pause(5);*/
 
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x50);
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x45);
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x57);
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x07, 0x20);
-            i2c.memoryWrite(I2C_ADDRESS_MODULE_INFRAGRID, 0x1f, 0x00);
-            basic.pause(5);
+                buf = i2c.readBuffer(I2C_ADDRESS_MODULE_INFRAGRID, [0x80], 64 * 2);
 
-            buf = i2c.readBuffer(I2C_ADDRESS_MODULE_INFRAGRID, [0x80], 64 * 2);
-
-            basic.pause(2000);
-            getTemperatureCelsius();
-            basic.pause(2000);
-
+                basic.pause(2000);
+                getTemperatureCelsius();
+                basic.pause(2000);
+            }
         })
-        
-
     }
 }
 
@@ -278,11 +272,14 @@ namespace infragridModule {
 /***|______\_____|_____/ ***/
 namespace lcdModule {
 
-    let framebuffer: NumberFormat.UInt8BE[] = [];
-
     export function init() {
+        let framebuffer: number [] = [];
 
-        serial.writeLine("INIT");
+        for(let i = 0; i < 20; i++) {
+            framebuffer[i] = 0;
+        }
+
+        serial.writeLine("INITIALIZE");
         let vcom: number = 0;
 
         helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_LCD_TCA9534);
@@ -293,24 +290,43 @@ namespace lcdModule {
 
         let line: number;
         let offs: number;
-        for (line = 0x01, offs = 1; line <= 128; line++ , offs += 18) {
+        for (line = 1, offs = 1; line <= 2; line++ , offs += 18) {
             serial.writeLine("CYCLE LCD");
             framebuffer[offs] = bcLs013b7dh03Reverse(line);
         }
-        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 1)
+        serial.writeNumbers(framebuffer);
 
-        lcdClear();
+        //CS pin set
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 1);
+        //lcdClear();
+
+        /*CLEAR*/
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 0);
+        pins.spiTransfer(Buffer.fromArray([0x20, 0x00]), null);
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 1);
         serial.writeLine("CLEAR");
 
-        lcdDrawPixel(8, 12, 150);
+        for(let i = 0; i < 20; i++) {
+            lcdDrawPixel(i, 1, 0);
+        }
+
+        framebuffer[0] = 0x80 | 0x40;
 
         serial.writeNumbers(framebuffer);
 
-        /*framebuffer[0] = 0x80 | vcom;
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 0);
 
-        pins.spiTransfer(null, null)
-        pins.spiWrite(0);*/
+        pins.spiTransfer(Buffer.fromArray(framebuffer), null);
 
+        helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 1);
+        
+
+        /*for(;;) {
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, ((1 << 4) | (1 << 5) | (1 << 6)));
+            basic.pause(100);
+            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_LCD_TCA9534, 0);
+            basic.pause(1000);
+        }*/
     }
 
     function lcdClear() {
@@ -318,16 +334,16 @@ namespace lcdModule {
         let offs: number;
         let col: number;
 
-        for (line = 0x01, offs = 2; line <= 128; line++ , offs += 18) {
+        for (line = 1, offs = 2; line <= 2; line++ , offs += 18) {
             for(col = 0; col < 16; col++) {
-                framebuffer[offs + col] = 0xff;
+                //framebuffer[offs + col] = 0xff;
             }
         }
     }
 
     function lcdDrawPixel(x : number, y : number, color : number) {
         // Skip mode byte + addr byte
-        let byteIndex : number = 2;
+        let byteIndex : NumberFormat.Int32BE = 2;
         // Skip lines
         byteIndex += y * 18;
         // Select column byte
@@ -337,11 +353,11 @@ namespace lcdModule {
 
         if (color == 0)
         {
-            framebuffer[byteIndex] |= bitMask;
+            //framebuffer[byteIndex] |= bitMask;
         }
         else
         {
-            framebuffer[byteIndex] &= ~bitMask;
+            //framebuffer[byteIndex] &= ~bitMask;
         }
     }
 
@@ -481,7 +497,6 @@ namespace luxTag {
                     illuminanceVar = lux;
 
                     basic.pause(LIGHT_MEASUREMENT_DELAY);
-
                 }
             }
         })
@@ -1133,6 +1148,7 @@ namespace co2Module {
 }
 
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
+//% groups=['PIR Module', 'Tags', 'Infragrid Module', 'PIR Module', 'Relay Module', 'Battery Module', 'CO2 Module']
 namespace hardwario {
 
     /**
@@ -1140,6 +1156,7 @@ namespace hardwario {
 	    * Returns illuminance in lux.
     */
     //%block="illuminance"
+    //% group="Tags"
     export function illuminance(): number {
         return luxTag.getIlluminance();
     }
@@ -1148,8 +1165,11 @@ namespace hardwario {
     * Sets the delay between measurements on chosen sensor to value in ms.
     */
     //%block="change $sensorType measurement delay to $delay"
+    //% delay.min=1500 delay.max=60000 delay.defl=3000
+    //% sensorType.fieldEditor="gridpicker"
+    //% sensorType.fieldOptions.width=220
+    //% sensorType.fieldOptions.columns=3
     export function measurementDelay(sensorType: MeasurementDelays, delay: number) {
-        delay = delay * 1000;
 
         switch (sensorType) {
             case MeasurementDelays.Light:
@@ -1190,6 +1210,7 @@ namespace hardwario {
 	    * Returns concentration of CO2 in air.
     */
     //%block="co2"
+    //% group="CO2 Module"
     export function co2(): number {
         return co2Module.getCO2();
     }
@@ -1199,6 +1220,7 @@ namespace hardwario {
 	    * Returns temperature in celsius. 
     */
     //%block="temperature"
+    //% group="Tags"
     export function temperature(): number {
         return temperatureTag.getTepmerature();
     }
@@ -1208,6 +1230,7 @@ namespace hardwario {
 	    * Returns relative humidity in percent. 
     */
     //%block="humidity"
+    //% group="Tags"
     export function humidity(): number {
         return humidityTag.getHumidity();
     }
@@ -1217,6 +1240,7 @@ namespace hardwario {
         * Returns total voc(tvoc) in the air in ppm.
     */
     //%block="voc"
+    //% group="Tags"
     export function voc(): number {
         return vocTag.getTVOC();
     }
@@ -1226,6 +1250,7 @@ namespace hardwario {
         * Returns total voc(tvoc) in the air in ppm.
     */
     //%block="voc | lp"
+    //% group="Tags"
     export function vocLP(): number {
         return vocLpTag.getTVOC();
     }
@@ -1235,6 +1260,7 @@ namespace hardwario {
 	    * Returns meters above sea level.
     */
     //%block="altitude"
+    //% group="Tags"
     export function altitude(): number {
         return barometerTag.getAltidude();
     }
@@ -1244,6 +1270,7 @@ namespace hardwario {
 	    * Returns atmospheric pressure in pascals.
     */
     //%block="pressure"
+    //% group="Tags"
     export function pressure(): number {
         return barometerTag.getPressure();
     }
@@ -1253,6 +1280,7 @@ namespace hardwario {
     * Battery Module (4 cells) or Mini Battery Module (2 cells).
     */
     //%block="voltage on $type | battery module"
+    //% group="Battery Module"
     export function batteryVoltage(type: BatteryModuleType): number {
         return batteryModule.getVoltage(type);
     }
@@ -1261,6 +1289,7 @@ namespace hardwario {
     * Sets the state of bi-stable relay on the Relay Module to on/off.
     */
     //%block="set relay state $state"
+    //% group="Relay Module"
     export function setRelay(state: RelayState) {
         relayModule.setState(state);
     }
@@ -1269,15 +1298,16 @@ namespace hardwario {
     * Sets the state of bi-stable relay on the Relay Module to on/off.
     */
     //%block="lcd"
-    export function lcdStart() {
+    /*export function lcdStart() {
         lcdModule.init();
-    }
+    }*/
     
 
     /**
     * 
     */
     //%block="infragrid"
+    //% group="Infragrid Module"
     export function infragrid() {
         infragridModule.init();
     }
@@ -1289,6 +1319,7 @@ namespace hardwario {
      * You have to run Motion block at the Start or anywhere before this event can occure because the PIR Module is not initialized by default.
      */
     //%block="on movement"
+    //% group="PIR Module"
     export function onMovement(body: () => void) {
         control.onEvent(Events.Movement, -10, body);
     }
@@ -1302,13 +1333,15 @@ namespace hardwario {
     //% blindTime.min=0 blindTime.max=15 blindTime.defl=0
     //% pulseCounter.min=0 pulseCounter.max=3 pulseCounter.defl=0
     //% windowTime.min=0 windowTime.max=3 windowTime.defl=0
-    export function motionDetectorTask(sensitivity : number, blindTime : number, 
-                                       pulseCounter : number, windowTime : number) {
+    //% expandableArgumentMode="toggle"
+    //% group="PIR Module"
+    export function motionDetectorTask(sensitivity? : number, blindTime? : number, 
+                                       pulseCounter? : number, windowTime? : number) {
 
         let dlPin : DigitalPin = DigitalPin.P8;
         let serinPin : DigitalPin = DigitalPin.P16;
 
-        basic.forever(function () {
+        control.inBackground(function () {
             let motionInit: boolean = false;
             let oldState: number = 0;
 
