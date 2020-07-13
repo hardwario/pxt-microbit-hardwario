@@ -200,10 +200,10 @@ namespace infragridModule {
     let buf : Buffer;
 
     export function getTemperatureCelsius() {
+        let temperature : NumberFormat.Float32BE;
+        let temporary_data : NumberFormat.Int16BE;
         for (let i = 0; i < 64; i++) {
-            let temperature : NumberFormat.Float32BE;
-            let temporary_data : NumberFormat.Int16BE =  buf.getNumber(NumberFormat.Int16BE, i);
-
+            temporary_data = buf.getNumber(NumberFormat.Int16BE, i);
             if (temporary_data > 0x200)
             {
                 temperature = (-temporary_data + 0xfff) * -0.25;
@@ -217,6 +217,21 @@ namespace infragridModule {
                 serial.writeLine("");
             }
         }
+        for(let i = 0; i < 8; i++) {
+            for(let j = 0; j < 8; j++) {
+                temporary_data = buf.getNumber(NumberFormat.Int16BE, (i * 8) + j);
+                if (temporary_data > 0x200)
+                {
+                    temperature = (-temporary_data + 0xfff) * -0.25;
+                }
+                else
+                {
+                    temperature = temporary_data * 0.25;
+                }
+                //led.plotBrightness(i, j, Math.map(temperature, 10, 60, 0, 255));
+            }
+        }
+
     }
 
     //TODO: SLEEP MODE
@@ -266,9 +281,8 @@ namespace infragridModule {
 
                 buf = i2c.readBuffer(I2C_ADDRESS_MODULE_INFRAGRID, [0x80], 64 * 2);
 
-                basic.pause(2000);
                 getTemperatureCelsius();
-                basic.pause(2000);
+                basic.pause(50);
             }
         })
     }
