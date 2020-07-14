@@ -72,8 +72,16 @@ let sgpc3Initialized: boolean = false;
 let voltageMeasurementStarted: boolean = false;
 
 let measurementTaskStarted: boolean = false;
-let batteryModuleType: BatteryModuleType = BatteryModuleType.Mini;
 
+class sensor {
+    public initialized : boolean;
+    public i2cAddress : number;
+
+    constructor(i2cAddress : number) {
+        this.i2cAddress = i2cAddress;
+        this.initialized = false;
+    }
+}
 
 /*** _____ ___   _____ ***/
 /***|_   _|__ \ / ____|***/
@@ -478,45 +486,56 @@ namespace pirModule {
 /***| |    | |  | | > <   ***/
 /***| |___ | |__| |/ . \  ***/
 /***| ______\____//_/ \_\ ***/
-namespace luxTag {
+class luxTag extends sensor {
+    
+    private illuminance : number = 0;
 
-    let illuminanceVar = 0;
-
-    export function getIlluminance(): number {
-        if (!opt3001Initialized) {
-            startLightMeasurement();
-        }
-        return Math.trunc(illuminanceVar);
+    public constructor(i2cAddress : number) { 
+        super(i2cAddress);
+        this.init();
     }
 
-    export function startLightMeasurement() {
-        if (!opt3001Initialized) {
-            if (i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x01, 0xc8, 0x10]) != 0) {
+    public getIlluminance(): number {
+        if (!this.initialized) {
+            this.init();
+        }
+        return Math.trunc(this.illuminance);
+    }
+
+    private init() {
+        if (!this.initialized) {
+            if (i2c.writeBuffer(this.i2cAddress, [0x01, 0xc8, 0x10]) != 0) {
                 return;
             }
+            this.initialized = true;
             basic.pause(50);
-            opt3001Initialized = true;
+        }
+    }
+
+    public measureIlluminance() {
+        if (!this.initialized) {
+            this.init();
         }
 
         let lux_status: number;
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x01, 0xca, 0x10]);
+        i2c.writeBuffer(this.i2cAddress, [0x01, 0xca, 0x10]);
         basic.pause(1000);
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x01]);
+        i2c.writeBuffer(this.i2cAddress, [0x01]);
 
-        lux_status = pins.i2cReadNumber(I2C_ADDRESS_TAG_LUX, NumberFormat.UInt16BE);
+        lux_status = pins.i2cReadNumber(this.i2cAddress, NumberFormat.UInt16BE);
         if ((lux_status & 0x0680) == 0x0080) {
 
-            i2c.writeBuffer(I2C_ADDRESS_TAG_LUX, [0x00]);
+            i2c.writeBuffer(this.i2cAddress, [0x00]);
 
-            let raw: number = pins.i2cReadNumber(I2C_ADDRESS_TAG_LUX, NumberFormat.UInt16BE);
+            let raw: number = pins.i2cReadNumber(this.i2cAddress, NumberFormat.UInt16BE);
             let exponent: number = raw >> 12;
             let fractResult: number = raw & 0xfff;
             let shiftedExponent: number = 1 << exponent;
             let lux: number = 0.01 * shiftedExponent * fractResult;
 
-            illuminanceVar = lux;
+            this.illuminance = lux;
         }
     }
 }
@@ -527,29 +546,37 @@ namespace luxTag {
 /*** |  _  /|  __| | |      / /\ \\   /  ***/
 /*** | | \ \| |____| |____ / ____ \| |   ***/
 /*** |_|  \_\______|______/_/    \_\_|   ***/
-namespace relayModule {
+class relayModule extends sensor {
+    public constructor(i2cAddress : number) {
+        super(i2cAddress);
+        this.init();
+    }
 
-    let relayInit: boolean = false;
+    private init() {
+        if (!this.initialized) {
+            helperFunctions.tca9534aInit(this.i2cAddress);
 
-    export function setState(state: RelayState) {
-        if (!relayInit) {
-            helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_RELAY_TCA9534);
+            helperFunctions.tca9534aWritePort(this.i2cAddress, ((0x40) | (0x10)));
 
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, ((0x40) | (0x10)));
+            helperFunctions.tca9534aSetPortDirection(this.i2cAddress, 0x00);
 
-            helperFunctions.tca9534aSetPortDirection(I2C_ADDRESS_MODULE_RELAY_TCA9534, 0x00);
+            this.initialized = true;
+        }
+    }
 
-            relayInit = true;
+    public setState(state: RelayState) {
+        if (!this.initialized) {
+            this.init();
         }
 
         if (state == RelayState.On) {
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, ((0x10) | (0x20)));
+            helperFunctions.tca9534aWritePort(this.i2cAddress, ((0x10) | (0x20)));
         }
         else {
-            helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, ((0x40) | (0x80)));
+            helperFunctions.tca9534aWritePort(this.i2cAddress, ((0x40) | (0x80)));
         }
         basic.pause(50);
-        helperFunctions.tca9534aWritePort(I2C_ADDRESS_MODULE_RELAY_TCA9534, 0);
+        helperFunctions.tca9534aWritePort(this.i2cAddress, 0);
     }
 }
 
@@ -559,53 +586,60 @@ namespace relayModule {
 /*** |  _ < / /\ \ |  _  /| |  | | |\/| |  __|    | |  |  __| |  _  / ***/
 /*** | |_) / ____ \| | \ \| |__| | |  | | |____   | |  | |____| | \ \ ***/
 /*** |____/_/    \_\_|  \_\\____/|_|  |_|______|  |_|  |______|_|  \_\***/
-namespace barometerTag {
+class barometerTag extends sensor {
 
-    let pressureVar : number = 0;
-    let altitudeVar : number = 0;
+    private pressure : number = 0;
+    private altitude : number = 0;
 
-    export function getAltidude() {
-        if (!mpl3115a2Initialized) {
+    public constructor(i2cAddress : number) {
+        super(i2cAddress);
+        this.init();
+    }
+
+    public getAltidude() {
+        if (!this.initialized) {
             basic.pause(10);
-            startBarometerMeasurement();
+            this.measure();
         }
-        return Math.trunc(altitudeVar);
+        return Math.trunc(this.altitude);
     }
 
-    export function getPressure() {
-        if (!mpl3115a2Initialized) {
-            startBarometerMeasurement();
+    public getPressure() {
+        if (!this.initialized) {
+            this.measure();
         }
-        return Math.trunc(pressureVar);
+        return Math.trunc(this.pressure);
     }
 
-    export function startBarometerMeasurement() {
-        if (!mpl3115a2Initialized) {
-            if (i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0x04]) != 0) {
+    private init() {
+        if (!this.initialized) {
+            if (i2c.writeBuffer(this.i2cAddress, [0x26, 0x04]) != 0) {
                 return;
             }
-            mpl3115a2Initialized = true;
+            this.initialized = true;
             basic.pause(1500);
         }
+    }
 
+    public measure() {
         //PRESSURE
-        if (i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0x38]) != 0) {
+        if (i2c.writeBuffer(this.i2cAddress, [0x26, 0x38]) != 0) {
             return;
         }
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x13, 0x07]);
+        i2c.writeBuffer(this.i2cAddress, [0x13, 0x07]);
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0x3a]);
+        i2c.writeBuffer(this.i2cAddress, [0x26, 0x3a]);
         basic.pause(1500);
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x00]);
+        i2c.writeBuffer(this.i2cAddress, [0x00]);
 
-        let pre_status = i2c.readNumber(I2C_ADDRESS_TAG_BAROMETER, [0x00])
-        pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
+        let pre_status = i2c.readNumber(this.i2cAddress, [0x00])
+        pins.i2cReadNumber(this.i2cAddress, 1);
 
         if (pre_status == 0x0e) {
 
-            let resultBuf: Buffer = i2c.readBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x01], 5);
+            let resultBuf: Buffer = i2c.readBuffer(this.i2cAddress, [0x01], 5);
             let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 16;
             let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 8;
             let thirdParam: NumberFormat.UInt32BE = resultBuf[3];
@@ -614,26 +648,26 @@ namespace barometerTag {
             let out_p: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
             let pascal: NumberFormat.Float32BE = (out_p) / 64.0;
 
-            pressureVar = pascal;
+            this.pressure = pascal;
 
             basic.pause(20);
 
             //ALTITUDE
-            i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0xb8]);
+            i2c.writeBuffer(this.i2cAddress, [0x26, 0xb8]);
 
-            i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x13, 0x07]);
+            i2c.writeBuffer(this.i2cAddress, [0x13, 0x07]);
 
-            i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x26, 0xba]);
+            i2c.writeBuffer(this.i2cAddress, [0x26, 0xba]);
             basic.pause(1500);
 
-            i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0]);
+            i2c.writeBuffer(this.i2cAddress, [0]);
 
-            let alt_status = pins.i2cReadNumber(I2C_ADDRESS_TAG_BAROMETER, 1);
+            let alt_status = pins.i2cReadNumber(this.i2cAddress, 1);
 
             if (alt_status == 0x0e) {
-                i2c.writeBuffer(I2C_ADDRESS_TAG_BAROMETER, [0x01]);
+                i2c.writeBuffer(this.i2cAddress, [0x01]);
 
-                let resultBuf: Buffer = pins.i2cReadBuffer(I2C_ADDRESS_TAG_BAROMETER, 5);
+                let resultBuf: Buffer = pins.i2cReadBuffer(this.i2cAddress, 5);
                 let firstParam: NumberFormat.UInt32BE = resultBuf[1] << 24;
                 let secondParam: NumberFormat.UInt32BE = resultBuf[2] << 16;
                 let thirdParam: NumberFormat.UInt32BE = (resultBuf[3] & 0xf0);
@@ -641,8 +675,7 @@ namespace barometerTag {
 
                 let out_pa: NumberFormat.Int32BE = firstParam | secondParam | thirdParam;
                 let meter: NumberFormat.Float32BE = (out_pa) / 65536.0;
-                altitudeVar = meter;
-
+                this.altitude = meter;
             }
         } 
     }
@@ -654,51 +687,62 @@ namespace barometerTag {
 /***   \ \/ /| |  | | |     ***/
 /***    \  / | |__| | |____ ***/
 /***     \/   \____/ \_____|***/
-namespace vocTag {
+class vocTag extends sensor {
 
-    let tvocVar = 0;
+    private tvoc : number = 0;
 
-    export function getTVOC(): number {
-        if (!sgp30Initialized) {
-            startVOCMeasurement();
-        }
-        return Math.trunc(tvocVar);
+    public constructor(i2cAddress : number) {
+        super(i2cAddress);
+        this.init();
     }
 
-    export function startVOCMeasurement() {
-        let outBuf: Buffer;
+    public getTVOC(): number {
+        if (!this.initialized) {
+            this.init();
+        }
+        return Math.trunc(this.tvoc);
+    }
 
-        if (!sgp30Initialized) {
-            outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x2f], 3);
+    private init() {
+        if (!this.initialized) {
+            i2c.readBuffer(this.i2cAddress, [0x20, 0x2f], 3);
 
-            if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x03]) != 0) {
-                sgp30Initialized = false;
+            if (i2c.writeBuffer(this.i2cAddress, [0x20, 0x03]) != 0) {
+                this.initialized = false;
                 return;
             }
-            sgp30Initialized = true;
+            this.initialized = true;
         }
+    }
+
+    public measureTVOC() {
+        if (!this.initialized) {
+            this.init();
+        }
+
+        let outBuf: Buffer;
 
         let crcBuf: number[] = [0x00, 0x00];
 
-        let crc = sgp30CalculateCrc(crcBuf, 2);
+        let crc = this.sgp30CalculateCrc(crcBuf, 2);
 
-        if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x61, 0x00, 0x00, crc]) != 0) {
+        if (i2c.writeBuffer(this.i2cAddress, [0x20, 0x61, 0x00, 0x00, crc]) != 0) {
             return;
         }
         basic.pause(30);
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x08]);
+        i2c.writeBuffer(this.i2cAddress, [0x20, 0x08]);
         basic.pause(30);
 
-        outBuf = pins.i2cReadBuffer(I2C_ADDRESS_TAG_VOC, 6);
+        outBuf = pins.i2cReadBuffer(this.i2cAddress, 6);
 
         let co2eq = (outBuf[0] << 8) | outBuf[1];
         let tvoc = (outBuf[3] << 8) | outBuf[4];
 
-        tvocVar = tvoc;
+        this.tvoc = tvoc;
     }
 
-    function sgp30CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
+    private sgp30CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
         let crc: number = 0xff;
 
         for (let i = 0; i < length; i++) {
@@ -724,49 +768,60 @@ namespace vocTag {
 /***   \ \/ /| |  | | |  |______| |    |  ___/ ***/
 /***    \  / | |__| | |____     | |____| |     ***/
 /***     \/   \____/ \_____|    |______|_|     ***/
-namespace vocLpTag {
+class vocLpTag extends sensor {
 
-    let tvocVar = 0;
+    private tvoc_lp : number = 0;
 
-    export function getTVOC(): number {
-        if (!sgpc3Initialized) {
-            startVOCLpMeasurement();
-        }
-        return Math.trunc(tvocVar);
+    public constructor(i2cAddress : number) {
+        super(i2cAddress);
+        this.init();
     }
 
-    export function startVOCLpMeasurement() {
-        let outBuf: Buffer;
+    public getTVOC(): number {
+        if (!this.initialized) {
+            this.init();
+        }
+        return Math.trunc(this.tvoc_lp);
+    }
 
-        if (!sgpc3Initialized) {
-            outBuf = i2c.readBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x2f], 3);
+    private init() {
+        if (!this.initialized) {
+            i2c.readBuffer(this.i2cAddress, [0x20, 0x2f], 3);
 
-            if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0xae]) != 0) {
+            if (i2c.writeBuffer(this.i2cAddress, [0x20, 0xae]) != 0) {
                 sgpc3Initialized = false;
                 return;
             }
-            sgpc3Initialized = true;
+            this.initialized = true;
+        }
+    }
+
+    public measureVOC_LP() {
+        if (!this.initialized) {
+            this.init();
         }
 
-        let crcBuf: number[] = [0x00, 0x00];
-        let crc = sgpc3CalculateCrc(crcBuf, 2);
+        let outBuf: Buffer;
 
-        if (i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x61, 0x00, 0x00, crc]) != 0) {
+        let crcBuf: number[] = [0x00, 0x00];
+        let crc = this.sgpc3CalculateCrc(crcBuf, 2);
+
+        if (i2c.writeBuffer(this.i2cAddress, [0x20, 0x61, 0x00, 0x00, crc]) != 0) {
             return;
         }
         basic.pause(30);
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_VOC, [0x20, 0x08]);
+        i2c.writeBuffer(this.i2cAddress, [0x20, 0x08]);
         basic.pause(150);
 
-        outBuf = pins.i2cReadBuffer(I2C_ADDRESS_TAG_VOC, 6);
+        outBuf = pins.i2cReadBuffer(this.i2cAddress, 6);
 
         let tvoc = (outBuf[0] << 8) | outBuf[1];
 
-        tvocVar = tvoc;
+        this.tvoc_lp = tvoc;
     }
 
-    function sgpc3CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
+    private sgpc3CalculateCrc(buffer: number[], length: number): NumberFormat.UInt8LE {
         let crc: number = 0xff;
 
         for (let i = 0; i < length; i++) {
@@ -792,34 +847,48 @@ namespace vocLpTag {
 /*** |  __  | |  | | |\/| | | | | |  | || |    | |    \   /  ***/
 /*** | |  | | |__| | |  | |_| |_| |__| || |_   | |     | |   ***/
 /*** |_|  |_|\____/|_|  |_|_____|_____/_____|  |_|     |_|   ***/
-namespace humidityTag {
-    let humidityVar = 0;
+class humidityTag extends sensor {
+    
+    private humidity : number = 0;
 
-    export function getHumidity(): number {
-        if (!humidityInititialized) {
-            startHumidityMeasurement();
-        }
-        return Math.trunc(humidityVar);
+    public constructor(i2cAddress : number) {
+        super(i2cAddress);
+        this.init();
     }
 
-    export function startHumidityMeasurement() {
-        humidityInititialized = true;
-
-        if (i2c.writeBuffer(I2C_ADDRESS_TAG_HUMIDITY, [0xfe]) != 0) {
-            humidityInititialized = false;
-            return;
+    public getHumidity(): number {
+        if (!this.initialized) {
+            this.init();
         }
-        basic.pause(20);
+        return Math.trunc(this.humidity);
+    }
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_HUMIDITY, [0xf5]);
+    private init() {
+        if (!this.initialized) {
+            if (i2c.writeBuffer(this.i2cAddress, [0xfe]) != 0) {
+                this.initialized = false;
+                return;
+            }
+            this.initialized = true;
+            basic.pause(20);
+        }
+    }
+
+    public measureHumidity() {
+
+        if (!this.initialized) {
+            this.init();
+        }
+        i2c.writeBuffer(this.i2cAddress, [0xf5]);
         basic.pause(50);
 
-        let rh = pins.i2cReadBuffer(I2C_ADDRESS_TAG_HUMIDITY, 2);
+        let rh = pins.i2cReadBuffer(this.i2cAddress, 2);
 
         let raw = rh[0] << 8 | rh[1];
         let percentage = -6 + 125 * raw / 65536
 
-        humidityVar = percentage;
+        this.humidity = percentage;
+
     }
 }
 
@@ -829,35 +898,41 @@ namespace humidityTag {
 /***    | |  |  __| | |\/| |  ___/|  __| |  _  /   / /\ \ | |  | |  | |  _  /|  __|  ***/
 /***    | |  | |____| |  | | |    | |____| | \ \  / ____ \| |  | |__| | | \ \| |____ ***/
 /***    |_|  |______|_|  |_|_|    |______|_|  \_\/_/    \_\_|   \____/|_|  \_\______|***/
-namespace temperatureTag {
+class temperatureTag extends sensor {
 
-    let temperatureVar = 0;
-
-    export function getTepmerature(): number {
-        if (!temperatureInitialized) {
-            startTemperatureMeasurement();
-        }
-        return Math.trunc(temperatureVar);
+    private temperature = 0;
+    
+    public constructor(i2cAddress : number) {
+        super(i2cAddress);
+        this.init();
     }
 
-    export function startTemperatureMeasurement() {
-        temperatureInitialized = true;
+    public getTepmerature(): number {
+        if (!this.initialized) {
+            this.init();
+        }
+        return Math.trunc(this.temperature);
+    }
 
+    private init() {
+         if (i2c.writeBuffer(this.i2cAddress, [0x01, 0x80]) != 0) {
+            this.initialized = false;
+            return;
+        }
+        this.initialized = true;
+    }
+
+    public measureTemperature() {
         let t;
         let tmp112;
 
-        if (i2c.writeBuffer(I2C_ADDRESS_TAG_TEMPERATURE, [0x01, 0x80]) != 0) {
-            temperatureInitialized = false;
-            return;
-        }
+        i2c.writeBuffer(this.i2cAddress, [0x00]);
 
-        i2c.writeBuffer(I2C_ADDRESS_TAG_TEMPERATURE, [0x00]);
-
-        t = pins.i2cReadBuffer(I2C_ADDRESS_TAG_TEMPERATURE, 2);
+        t = pins.i2cReadBuffer(this.i2cAddress, 2);
         tmp112 = t[0] + (t[1] / 100)
 
         t = tmp112;
-        temperatureVar = t;
+        this.temperature = t;
     }
 }
 
@@ -867,29 +942,30 @@ namespace temperatureTag {
 /*** |  _ < / /\ \ | |     | |  |  __| |  _  / \   /  ***/
 /*** | |_) / ____ \| |     | |  | |____| | \ \  | |   ***/
 /*** |____/_/    \_\_|     |_|  |______|_|  \_\ |_|   ***/
-namespace batteryModule {
+class batteryModule {
 
-    let voltage = 0;
+    private voltage = 0;
+    private moduleType : BatteryModuleType;
+    public initialized : boolean = false;
 
-    export function getVoltage(type: BatteryModuleType): number {
-
-        if (!voltageMeasurementStarted) {
-            startVoltageMeasurement(type);
-            voltageMeasurementStarted = true;
-        }
-        return voltage;
+    public getVoltage(): number {
+        return this.voltage;
     }
 
-    export function startVoltageMeasurement(type: BatteryModuleType) {
+    public constructor(type : BatteryModuleType) {
+        this.initialized = true;
+        this.moduleType = type;
+    }
 
-        if (type == BatteryModuleType.Mini) {
+    public measureVoltage() {
+        if (this.moduleType == BatteryModuleType.Mini) {
             pins.digitalWritePin(DigitalPin.P1, 0);
             basic.pause(100);
 
             let result: number = pins.analogReadPin(AnalogPin.P0);
 
             pins.analogWritePin(AnalogPin.P1, 1023);
-            voltage = (3 / 1024 * result / 0.33) + 0.1;
+            this.voltage = (3 / 1024 * result / 0.33) + 0.1;
         }
         else {
             pins.digitalWritePin(DigitalPin.P1, 1);
@@ -898,7 +974,7 @@ namespace batteryModule {
             let result: number = pins.analogReadPin(AnalogPin.P0);
 
             pins.digitalWritePin(DigitalPin.P1, 0);
-            voltage = 3 / 1024 * result / 0.13;
+            this.voltage = 3 / 1024 * result / 0.13;
         }
     }
 }
@@ -1115,6 +1191,15 @@ namespace co2Module {
 //% groups=['PIR Module', 'Tags', 'Infragrid Module', 'PIR Module', 'Relay Module', 'Battery Module', 'CO2 Module']
 namespace hardwario {
 
+    let lux : luxTag = null; 
+    let relay : relayModule = null;
+    let barometer : barometerTag = null;
+    let vocInstance : vocTag = null;
+    let voc_lp : vocLpTag = null;
+    let temperatureInstance : temperatureTag = null;
+    let humidityInstance : humidityTag = null;
+    let batteryModuleInstance : batteryModule = null;
+
     /**
     * Reads the current value of light intensity from the sensor.
 	    * Returns illuminance in lux.
@@ -1122,6 +1207,10 @@ namespace hardwario {
     //%block="illuminance"
     //% group="Tags"
     export function illuminance(): number {
+        if(lux == null) {
+            lux = new luxTag(I2C_ADDRESS_TAG_LUX);
+        }
+
         if(!measurementTaskStarted) {
             basic.pause(50);
             if(!measurementTaskStarted) {
@@ -1129,7 +1218,7 @@ namespace hardwario {
             }
             measurementTask();
         }
-        return luxTag.getIlluminance();
+        return lux.getIlluminance();
     }
 
     /**
@@ -1200,6 +1289,10 @@ namespace hardwario {
     //%block="temperature"
     //% group="Tags"
     export function temperature(): number {
+        if(temperatureInstance == null) {
+            temperatureInstance = new temperatureTag(I2C_ADDRESS_TAG_TEMPERATURE);
+            serial.writeNumber(temperatureInstance.i2cAddress);
+        }
         if(!measurementTaskStarted) {
             basic.pause(40);
             if(!measurementTaskStarted) {
@@ -1207,7 +1300,7 @@ namespace hardwario {
             }
             measurementTask();
         }
-        return temperatureTag.getTepmerature();
+        return temperatureInstance.getTepmerature();
     }
 
     /**
@@ -1217,6 +1310,9 @@ namespace hardwario {
     //%block="humidity"
     //% group="Tags"
     export function humidity(): number {
+        if(humidityInstance == null) {
+            humidityInstance = new humidityTag(I2C_ADDRESS_TAG_HUMIDITY);
+        }
         if(!measurementTaskStarted) {
             basic.pause(35);
             if(!measurementTaskStarted) {
@@ -1224,7 +1320,7 @@ namespace hardwario {
             }
             measurementTask();
         }
-        return humidityTag.getHumidity();
+        return humidityInstance.getHumidity();
     }
 
     /**
@@ -1234,6 +1330,10 @@ namespace hardwario {
     //%block="voc"
     //% group="Tags"
     export function voc(): number {
+        if(!vocInstance == null) {
+            vocInstance = new vocTag(I2C_ADDRESS_TAG_VOC);
+        }
+
         if(!measurementTaskStarted) {
             basic.pause(30);
             if(!measurementTaskStarted) {
@@ -1241,7 +1341,7 @@ namespace hardwario {
             }
             measurementTask();
         }
-        return vocTag.getTVOC();
+        return vocInstance.getTVOC();
     }
 
     /**
@@ -1251,6 +1351,10 @@ namespace hardwario {
     //%block="voc | lp"
     //% group="Tags"
     export function vocLP(): number {
+        if(voc_lp == null) {
+            voc_lp = new vocLpTag(I2C_ADDRESS_TAG_VOC);
+        }
+
         if(!measurementTaskStarted) {
             basic.pause(25);
             if(!measurementTaskStarted) {
@@ -1258,7 +1362,7 @@ namespace hardwario {
             }
             measurementTask();
         }
-        return vocLpTag.getTVOC();
+        return voc_lp.getTVOC();
     }
 
     /**
@@ -1268,6 +1372,10 @@ namespace hardwario {
     //%block="altitude"
     //% group="Tags"
     export function altitude(): number {
+        basic.pause(40);
+        if(barometer == null) {
+            barometer = new barometerTag(I2C_ADDRESS_TAG_BAROMETER);
+        }
         if(!measurementTaskStarted) {
             basic.pause(20);
             if(!measurementTaskStarted) {
@@ -1275,7 +1383,7 @@ namespace hardwario {
             }
             measurementTask();
         }
-        return barometerTag.getAltidude();
+        return barometer.getAltidude();
     }
 
     /**
@@ -1285,6 +1393,9 @@ namespace hardwario {
     //%block="pressure"
     //% group="Tags"
     export function pressure(): number {
+        if(barometer == null) {
+            barometer = new barometerTag(I2C_ADDRESS_TAG_BAROMETER);
+        }
         if(!measurementTaskStarted) {
             basic.pause(15);
             if(!measurementTaskStarted) {
@@ -1292,7 +1403,7 @@ namespace hardwario {
             }
             measurementTask();
         }
-        return barometerTag.getPressure();
+        return barometer.getPressure();
     }
 
     /**
@@ -1302,14 +1413,16 @@ namespace hardwario {
     //%block="voltage on $type | battery module"
     //% group="Battery Module"
     export function batteryVoltage(type: BatteryModuleType): number {
-        batteryModuleType = type;
+        if(batteryModuleInstance == null) {
+            batteryModuleInstance = new batteryModule(type);
+        }
         if(!measurementTaskStarted) {
             basic.pause(10);
             if(!measurementTaskStarted) {
                 measurementTask();
             }
         }
-        return batteryModule.getVoltage(type);
+        return batteryModuleInstance.getVoltage();
     }
 
     /**
@@ -1318,7 +1431,12 @@ namespace hardwario {
     //%block="set relay state $state"
     //% group="Relay Module"
     export function setRelay(state: RelayState) {
-        relayModule.setState(state);
+        if(relay == null) {
+            relay = new relayModule(I2C_ADDRESS_MODULE_RELAY_TCA9534);
+        }
+        control.inBackground(function () {
+            relay.setState(state);
+        })
     }
 
     /**
@@ -1352,32 +1470,34 @@ namespace hardwario {
     }
 
     function measurementTask() {
-        serial.writeLine("MEASUREMENT TASK");
         measurementTaskStarted = true;
+        
         control.inBackground(function () {
             while(true) {
-                if(temperatureInitialized) {
-                    temperatureTag.startTemperatureMeasurement();
+                if(temperatureInstance != null && temperatureInstance.initialized) {
+                    temperatureInstance.measureTemperature();
                 }
-                if(humidityInititialized) {
-                    humidityTag.startHumidityMeasurement();
+                if(humidityInstance != null && humidityInstance.initialized) {
+                    humidityInstance.measureHumidity();
                 }
-                if(opt3001Initialized) {
-                    luxTag.startLightMeasurement();
+                if(lux != null && lux.initialized) {
+                    lux.measureIlluminance();
                 }
-                if(voltageMeasurementStarted) {
-                    batteryModule.startVoltageMeasurement(batteryModuleType);
+                if(batteryModuleInstance != null && batteryModuleInstance.initialized) {
+                    batteryModuleInstance.measureVoltage();
                 }
-                if(mpl3115a2Initialized) {
-                    barometerTag.startBarometerMeasurement();
+                if(barometer != null && barometer.initialized) {
+                    control.inBackground(function () {
+                        barometer.measure();
+                    })
                 }
-                if(sgpc3Initialized) {
-                    vocLpTag.startVOCLpMeasurement();
+                if(voc_lp != null && voc_lp.initialized) {
+                    voc_lp.measureVOC_LP();
                 }
-                if(sgp30Initialized) {
-                    vocTag.startVOCMeasurement();
+                if(vocInstance != null && vocInstance.initialized) {
+                    vocInstance.measureTVOC();
                 }
-                basic.pause(TEMPERATURE_MEASUREMENT_DELAY);
+                basic.pause(2000);
             }
         })
     }
