@@ -44,7 +44,7 @@ Obviously, the signal mapping will not cover 100% of the IoT Kit use-cases. The 
 The following IoT Kit modules will be compatible with the Microbit Module:
  * Battery Module
  * Mini Battery Module
- * PIR Module #
+ * PIR Module
  * CO2 Module
  * Climate Module
  * LCD Module #
@@ -60,7 +60,7 @@ The following IoT Kit modules will be compatible with the Microbit Module:
  * VOC-LP Tag
  * NFC Tag #
 
-// Items with "#" is in developement
+// Items with "#" are in developement
 
 Only large 3D-printed enclosures can be used for the micro:bit integration. The whole collection with the slot for the micro:bit connector from the top side can be prepared effortlessly.
 
@@ -98,28 +98,28 @@ basic.forever(function () {
 # Reference
 ---
 ## co2 #hardwario-co2
-Starts periodic measurement on [HARDWARIO CO2 Module](https://shop.hardwario.com/co2-module/) and returns the value of CO2 in the air. The first initialization takes around 1 minute then it measures every 3 seconds.
+Starts periodic measurement on [HARDWARIO CO2 Module](https://shop.hardwario.com/co2-module/) and returns the value of CO2 in the air. The first initialization takes around 1 minute then it measures every 3 seconds by default, you can change the time with the special block.
 ```sig
 hardwario.co2()
 ```
 
 ## illuminance #hardwario-illuminance
 Starts periodic measurement on [HARDWARIO Lux Meter Tag](https://shop.hardwario.com/lux-meter-tag/) and returns the value of light intensity in the lux. 
-It updates the value every 3 seconds.
+It updates the value every 3 seconds by default, you can change the time with the special block.
 ```sig
 hardwario.illuminance()
 ```
 
 ## temperature #hardwario-temperature
 Starts periodic measurement on [HARDWARIO Temperature Tag](https://shop.hardwario.com/temperature-tag/) and returns the value of temperature in Celsius. 
-It updates the value every 3 seconds.
+It updates the value every 3 seconds by default, you can change the time with the special block.
 ```sig
 hardwario.temperature()
 ```
 
 ## voc #hardwario-voc
 Starts periodic measurement on [HARDWARIO VOC Tag](https://shop.hardwario.com/voc-tag/) and returns the value of voc(volatile organic compound) in tvoc. 
-It updates the value every 3 seconds.
+It updates the value every 3 seconds by default, you can change the time with the special block.
 ```sig
 hardwario.voc()
 ```
@@ -131,33 +131,58 @@ hardwario.vocLP()
 
 ## humidity #hardwario-humidity
 Starts periodic measurement on [HARDWARIO Humidity Tag](https://shop.hardwario.com/humidity-tag/) and returns the percentage of humidity in the air. 
-It updates the value every 3 seconds.
+It updates the value every 3 seconds by default, you can change the time with the special block.
 ```sig
 hardwario.humidity()
 ```
 
 ## altitude #hardwario-altitude
 Starts periodic measurement on [HARDWARIO Barometer Tag](https://shop.hardwario.com/barometer-tag/) and returns the meters above sea level.
-It updates the value every 3 seconds.
+It updates the value every 3 seconds by default, you can change the time with the special block.
 ```sig
 hardwario.altitude()
 ```
 
+## change measurement delay #hardwario-measurementDelay
+Change the measurement delay on selected sensor or on all of them to selected value in ms. There can be some delays between the measurements if you use multiple sensors but it will be mostly precise.
+```sig
+hardwario.measurementDelay(MeasurementDelays.Light, 3000)
+```
+
 ## pressure #hardwario-pressure
 Starts periodic measurement on [HARDWARIO Barometer Tag](https://shop.hardwario.com/barometer-tag/) and returns the atmospheric pressure in Pascal.
-It updates the value every 3 seconds.
+It updates the value every 3 seconds by default, you can change the time with the special block.
 ```sig
 hardwario.pressure()
 ```
 
 ## battery #hardwario-batteryVoltage
-Starts periodic measurement on [HARDWARIO Battery Module](https://shop.hardwario.com/battery-module/) or [HARDWARIO Mini Battery Module](https://shop.hardwario.com/mini-battery-module/) and returns Voltage on all the cells in Volts. It updates the value every 3 seconds.
+Starts periodic measurement on [HARDWARIO Battery Module](https://shop.hardwario.com/battery-module/) or [HARDWARIO Mini Battery Module](https://shop.hardwario.com/mini-battery-module/) and returns Voltage on all the cells in Volts. It updates the value every 3 seconds by default, you can change the time with the special block.
 
 * ``Mini``, choose this if you have a mini version of Battery Module
 * ``Standard``, choose this if you have a standard version of Battery Module
 
 ```sig
 hardwario.batteryVoltage(BatteryModuleType.Mini)
+```
+
+## infragrid #hardwario-infragrid
+Starts measurement on [HARDWARIO Infragrid Module](https://shop.hardwario.com/infra-grid-module/) and ploting it onto the Micro:bit LED display.
+```sig
+hardwario.infragrid()
+```
+
+# configure PIR module # hardwario-motionDetectorTask
+This block starts motion detection on the [HARDWARIO PIR Module](https://shop.hardwario.com/pir-module/), you can also set some advanced configuration by pressing the plus on the block if you want to.
+```sig
+hardwario.motionDetectorTask()
+```
+# on movement # hardwario-onMovement
+You can put more blocks into this one and it will fire every time the movement is detected on the PIR Module. YOU HAVE TO RUN A CONFIGURE PIR MODULE BLOCK FOR THIS ONE TO WORK!
+```sig
+hardwario.onMovement(function () {
+    serial.writeLine("Movement detected")
+})
 ```
 
 ## relay #hardwario-setRelay
