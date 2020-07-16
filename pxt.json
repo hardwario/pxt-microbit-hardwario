@@ -8,7 +8,11 @@
     },
     "files": [
         "README.md",
-        "main.ts"
+        "main.ts",
+        "_locales/HARDWARIO-jsdoc-strings.json",
+        "_locales/HARDWARIO-strings.json",
+        "_locales/cs/HARDWARIO-jsdoc-strings.json",
+        "_locales/cs/HARDWARIO-strings.json",
     ],
     "testFiles": [
         "test.ts"
