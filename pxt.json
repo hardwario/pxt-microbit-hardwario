@@ -9,10 +9,10 @@
     "files": [
         "README.md",
         "main.ts",
-        "_locales/HARDWARIO-jsdoc-strings.json",
-        "_locales/HARDWARIO-strings.json",
-        "_locales/cs/HARDWARIO-jsdoc-strings.json",
-        "_locales/cs/HARDWARIO-strings.json",
+        "_locales/pxt-hardwario-jsdoc-strings.json",
+        "_locales/pxt-hardwario-strings.json",
+        "_locales/cs/pxt-hardwario-jsdoc-strings.json",
+        "_locales/cs/pxt-hardwario-strings.json"
     ],
     "testFiles": [
         "test.ts"

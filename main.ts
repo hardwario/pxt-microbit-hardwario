@@ -90,27 +90,27 @@ class Sensor {
 /*** _| |_ / /_| |____ ***/
 /***|_____|____|\_____|***/
 namespace i2c {
-    /**Read number from an i2c device with @address after sending the @buffer*/
+    //Read number from an i2c device with @address after sending the @buffer
     export function readNumber(address: number, buffer: number[]): number {
         let buf = pins.createBufferFromArray(buffer);
         pins.i2cWriteBuffer(address, buf, true);
         return pins.i2cReadNumber(address, NumberFormat.Int8BE);
     }
 
-    /**Read buffer from an i2c device with @address after sending the @buffer*/
+    //Read buffer from an i2c device with @address after sending the @buffer
     export function readBuffer(address: number, buffer: number[], size: number): Buffer {
         let buf = pins.createBufferFromArray(buffer);
         pins.i2cWriteBuffer(address, buf, true);
         return pins.i2cReadBuffer(address, size);
     }
 
-    /**Just a wrapper to make writing a buffer a little bit easier for me*/
+    //Just a wrapper to make writing a buffer a little bit easier for me
     export function writeBuffer(address: number, buffer: number[]): number {
         let buf = pins.createBufferFromArray(buffer);
         return pins.i2cWriteBuffer(address, buf);
     }
 
-    /**Writes data onto the @regAddress of device with @address*/
+    //Writes data onto the @regAddress of device with @address
     export function memoryWrite(address: number, regAddress: number, data: number) {
         let buf: Buffer = pins.createBufferFromArray([regAddress, data]);
         pins.i2cWriteBuffer(address, buf);
@@ -1456,9 +1456,6 @@ namespace hardwario {
         })
     }
 
-    /*
-        TODO: SPI config
-    */
     //%block="configure PIR module || sensitivity: $sensitivity|set Blind Time: $blindTime|set Pulse Conunter: $pulseCounter|set Window Time: $windowTime"
     //% sensitivity.min=0 sensitivity.max=255 sensitivity.defl=35
     //% blindTime.min=0 blindTime.max=15 blindTime.defl=0

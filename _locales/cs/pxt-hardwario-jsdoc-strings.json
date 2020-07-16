@@ -1,0 +1,19 @@
+{
+  "hardwario.altitude": "Čte momentální hodnotu nadmořské výšky ze sensoru.\nVrací nadmořskou výšku v jednotkách metrech nad mořem.",
+  "hardwario.batteryVoltage": "Čte momentální napětí na bateriích v Battery Modulu. Musíte zvolit zda máte\nBattery Modul(4 články) nebo Mini Battery Modul(2 články).",
+  "hardwario.co2": "Čte momentální hodnotu co2 ze sensoru.\nVrací koncentraci co2 v ovzduší.",
+  "hardwario.humidity": "Čte momentální hodnotu vlhkosti ze sensoru.\nVrací vlhost vzduchu v procentech.",
+  "hardwario.illuminance": "Čte momentální hodnotu intenzity světla ze sensoru.\nVrací intenzitu světla v jednotkách lux.",
+  "hardwario.infragrid": "Sets the state of bi-stable relay on the Relay Module to on/off.",
+  "hardwario.measurementDelay": "Nastaví prodlevu mezi měřením, v milisekundách, na zvoleném senzoru.",
+  "hardwario.onMovement": "Může obsahovat funkce, které budou spuštěny při detekci pohybu na PIR modulu.\nJe nutné spustit funkci na konfiguraci PIR modulu při startu nebo kdekoli, bez této funkce nebude nikdy detekován pohyb jelikož jste nikdy neinicializovali PIR Modul.",
+  "hardwario.pressure": "Čte momentální hodnotu atmosferického tlaku ze sensoru.\nVrací atmosferický tlak v Pascalech.",
+  "hardwario.setRelay": "Nastavuje stav bi-stabilího relé na Relé Modulu na on/off.",
+  "hardwario.temperature": "Čte momentální hodnotu teploty ze sensoru.\nVrací teplotu ve stupních Celsia.",
+  "hardwario.voc": "Čte momentální hodnotu voc(Těkavá organická látka) ze sensoru.\nVrací tvoc(Celkové voc) v jednotkách ppm(Parts per Milion).",
+  "hardwario.vocLP": "Čte momentální hodnotu voc(Těkavá organická látka) ze sensoru.\nVrací tvoc(Celkové voc) v jednotkách ppm(Parts per Milion).",
+  "i2c.memoryWrite": "Writes data onto the @regAddress of device with @address",
+  "i2c.readBuffer": "Read buffer from an i2c device with @address after sending the @buffer",
+  "i2c.readNumber": "Read number from an i2c device with @address after sending the @buffer",
+  "i2c.writeBuffer": "Just a wrapper to make writing a buffer a little bit easier for me"
+}
