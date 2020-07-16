@@ -11,6 +11,7 @@
   "hardwario.pressure|block": "pressure",
   "hardwario.setRelay|block": "set relay state $state",
   "hardwario.temperature|block": "temperature",
+  "hardwario.setPowerModuleRelay|block": "set power relay state $state",  
   "hardwario.vocLP|block": "voc | lp",
   "hardwario.voc|block": "voc",
   "hardwario|block": "HARDWARIO",

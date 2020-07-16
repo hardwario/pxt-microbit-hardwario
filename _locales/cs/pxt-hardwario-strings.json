@@ -11,6 +11,7 @@
   "hardwario.pressure|block": "atmosferický tlak",
   "hardwario.setRelay|block": "nastavit stav relé na $state",
   "hardwario.temperature|block": "teplota",
+  "hardwario.setPowerModuleRelay|block": "nastavit stav Power relé na $state",
   "hardwario.vocLP|block": "voc | lp",
   "hardwario.voc|block": "voc",
   "hardwario|block": "HARDWARIO",

@@ -11,6 +11,7 @@
   "hardwario.setRelay": "Nastavuje stav bi-stabilího relé na Relé Modulu na on/off.",
   "hardwario.temperature": "Čte momentální hodnotu teploty ze sensoru.\nVrací teplotu ve stupních Celsia.",
   "hardwario.voc": "Čte momentální hodnotu voc(Těkavá organická látka) ze sensoru.\nVrací tvoc(Celkové voc) v jednotkách ppm(Parts per Milion).",
+  "hardwario.setPowerModuleRelay": "Nastavuje stav relé na Power Modulu na on/off.",
   "hardwario.vocLP": "Čte momentální hodnotu voc(Těkavá organická látka) ze sensoru.\nVrací tvoc(Celkové voc) v jednotkách ppm(Parts per Milion).",
   "i2c.memoryWrite": "Writes data onto the @regAddress of device with @address",
   "i2c.readBuffer": "Read buffer from an i2c device with @address after sending the @buffer",

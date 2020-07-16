@@ -1135,7 +1135,7 @@ class CO2Module extends Sensor {
 }
 
 //% color=#e30427 icon="\uf2db" block="HARDWARIO"
-//% groups=['PIR Module', 'Tags', 'Infragrid Module', 'PIR Module', 'Relay Module', 'Battery Module', 'CO2 Module']
+//% groups=['PIR Module', 'Tags', 'Infragrid Module', 'Power Module' 'PIR Module', 'Relay Module', 'Battery Module', 'CO2 Module']
 namespace hardwario {
 
     let luxTagInstance: LuxTag = null; 
@@ -1380,6 +1380,20 @@ namespace hardwario {
         control.inBackground(function () {
             relayModuleInstance.setState(state);
         })
+    }
+
+    /**
+    * Sets the state of relay on the Power Module to on/off.
+    */
+    //%block="set power relay state $state"
+    //% group="Power Module"
+    export function setPowerModuleRelay(state: RelayState) {
+        if(state == RelayState.Off) {
+            pins.digitalWritePin(DigitalPin.P0, 0);
+        }
+        else {
+            pins.digitalWritePin(DigitalPin.P0, 1);
+        }
     }
 
     /**

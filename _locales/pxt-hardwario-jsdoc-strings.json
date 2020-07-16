@@ -11,5 +11,6 @@
   "hardwario.setRelay": "Sets the state of bi-stable relay on the Relay Module to on/off.",
   "hardwario.temperature": "Reads the current value of temperature from the Sensor.\nReturns temperature in celsius.",
   "hardwario.voc": "Reads the current concentration of voc(volatile organic compound) in the air from the Sensor.\nReturns total voc(tvoc) in the air in ppm.",
+  "hardwario.setPowerModuleRelay": "Sets the state of relay on the Power Module to on/off.",
   "hardwario.vocLP": "Reads the current concentration of voc(volatile organic compound) in the air from the low-power Sensor.\nReturns total voc(tvoc) in the air in ppm."
 }
