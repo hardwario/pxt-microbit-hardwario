@@ -450,61 +450,50 @@ namespace lcdModule {
 /***|  ___/ | | |  _  /  ***/
 /***| |    _| |_| | \ \  ***/
 /***|_|   |_____|_|  \_\ ***/                   
-class PirModule {
+namespace pirModule {
 
-    private dlPin: DigitalPin;
-    private serinPin: DigitalPin;
-    private sensitivity: number;
-    private blindTime: number;
-    private pulseCounter: number;
-    private windowTime: number;
-
-    public constructor(dlPin: DigitalPin, serinPin: DigitalPin,
-                               sensitivity: number, blindTime: number, 
-                               pulseCounter: number, windowTime: number) { 
-        this.init();
-    } 
-
-    private init() {
+    export function startMotionSensor(dlPin : DigitalPin, serinPin : DigitalPin,
+                               sensitivity : number, blindTime : number, 
+                               pulseCounter : number, windowTime : number) {
         //Pins initialization
-        pins.setPull(this.dlPin, PinPullMode.PullNone);
-        pins.digitalReadPin(this.dlPin);
+        pins.setPull(dlPin, PinPullMode.PullNone);
+        pins.digitalReadPin(dlPin);
     
-        pins.digitalWritePin(this.serinPin, 0);
+        pins.digitalWritePin(serinPin, 0);
         control.waitMicros(1000);
 
         //Sensor configuration
-        this.writeField(this.sensitivity, 8);
-        this.writeField(this.blindTime, 4);
-        this.writeField(this.pulseCounter, 2);
-        this.writeField(this.windowTime, 2);
-        this.writeField(2, 2);
-        this.writeField(0, 2);
-        this.writeField(16, 5);
+        writeField(sensitivity, 8, serinPin);
+        writeField(blindTime, 4, serinPin);
+        writeField(pulseCounter, 2, serinPin);
+        writeField(windowTime, 2, serinPin);
+        writeField(2, 2, serinPin);
+        writeField(0, 2, serinPin);
+        writeField(16, 5, serinPin);
 
-        pins.digitalWritePin(this.serinPin, 0);
+        pins.digitalWritePin(serinPin, 0);
         control.waitMicros(1000);
     }
 
-    private writeBit(value: number) {
+    function writeBit(value : number, serinPin : DigitalPin) {
         if (value == 0)
         {
-            pins.digitalWritePin(this.serinPin, 1);
+            pins.digitalWritePin(serinPin, 1);
             control.waitMicros(5);
-            pins.digitalWritePin(this.serinPin, 0);
+            pins.digitalWritePin(serinPin, 0);
             control.waitMicros(95);
         }
         else if (value == 1)
         {
-            pins.digitalWritePin(this.serinPin, 1);
+            pins.digitalWritePin(serinPin, 1);
             control.waitMicros(95);
-            pins.digitalWritePin(this.serinPin, 0);
+            pins.digitalWritePin(serinPin, 0);
             control.waitMicros(5);
         }
     }
 
-    private writeField(value: number, len: number) {
-        let bit: number;
+    function writeField(value : number, len : number, serinPin : DigitalPin) {
+        let bit : number;
         for (let i = 0; i < len; i++)
         {
             if ((value & (2 ** (len - i - 1))) == 0)
@@ -515,7 +504,7 @@ class PirModule {
             {
                 bit = 1;
             }
-            this.writeBit(bit);
+            writeBit(bit, serinPin);
         }
     }
 }
@@ -1158,7 +1147,7 @@ namespace hardwario {
     let humidityTagInstance: HumidityTag = null;
     let batteryModuleInstance: BatteryModule = null;
     let co2ModuleInstance: CO2Module = null;
-    let pirModuleInstance: PirModule = null;
+    //let pirModuleInstance: PirModule = null;
 
     /**
     * Reads the current value of light intensity from the Sensor.
@@ -1183,11 +1172,11 @@ namespace hardwario {
     /**
     * Sets the delay between measurements on chosen Sensor to value in ms.
     */
-    //%block="change $SensorType measurement delay to $delay"
+    //%block="change $sensorType measurement delay to $delay"
     //% delay.min=1500 delay.max=60000 delay.defl=3000
-    //% SensorType.fieldEditor="gridpicker"
-    //% SensorType.fieldOptions.width=220
-    //% SensorType.fieldOptions.columns=3
+    //% sensorType.fieldEditor="gridpicker"
+    //% sensorType.fieldOptions.width=220
+    //% sensorType.fieldOptions.columns=3
     export function measurementDelay(sensorType: MeasurementDelays, delay: number) {
 
         switch (sensorType) {
@@ -1477,34 +1466,42 @@ namespace hardwario {
     //% windowTime.min=0 windowTime.max=3 windowTime.defl=0
     //% expandableArgumentMode="toggle"
     //% group="PIR Module"
-    export function motionDetectorTask(sensitivity?: number, blindTime?: number, 
-                                       pulseCounter?: number, windowTime?: number) {
-        let dlPin: DigitalPin = DigitalPin.P8;
-        let serinPin: DigitalPin = DigitalPin.P16;
+    export function motionDetectorTask(sensitivity? : number, blindTime? : number, 
+                                       pulseCounter? : number, windowTime? : number) {
 
-        if (pirModuleInstance == null) {
-            pirModuleInstance = new PirModule(dlPin, serinPin, sensitivity, blindTime,
-                                              pulseCounter, windowTime);
-        }                                    
-        
+        let dlPin : DigitalPin = DigitalPin.P8;
+        let serinPin : DigitalPin = DigitalPin.P16;
+
         control.inBackground(function () {
+            let motionInit: boolean = false;
             let oldState: number = 0;
 
             while (true) {
 
-                let state: number;
-                state = pins.digitalReadPin(dlPin);
-
-                if (state != 0 && oldState == 0)
+                if (!motionInit) 
                 {
-                    control.raiseEvent(Events.Movement, -10);
+                    pirModule.startMotionSensor(dlPin, serinPin, sensitivity, blindTime, pulseCounter, windowTime);
 
-                    pins.digitalWritePin(dlPin, 0);
-                    control.waitMicros(100);
-                    pins.digitalReadPin(dlPin);
-                    control.waitMicros(100);
+                    motionInit = true;
                 }
-                oldState = state;
+                else
+                {
+                    let state: number;
+                    state = pins.digitalReadPin(dlPin);
+
+                    if (state != 0 && oldState == 0)
+                    {
+                        control.raiseEvent(Events.Movement, -10);
+
+                        pins.digitalWritePin(dlPin, 0);
+                        control.waitMicros(100);
+                        pins.digitalReadPin(dlPin);
+                        control.waitMicros(100);
+                    }
+
+                    oldState = state;
+                    basic.pause(50);
+                }
             }
         })
     }
