@@ -1410,9 +1410,9 @@ namespace hardwario {
     */
     //%block="infragrid"
     //% group="Infragrid Module"
-    export function infragrid() {
+    /*export function infragrid() {
         infragridModule.init();
-    }
+    }*/
 
 
 
