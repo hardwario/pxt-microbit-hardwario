@@ -14,7 +14,7 @@ This document describes the concept of the micro:bit integration into the HARDWA
 
 # Examples
 
-If you want to see how to begin with the micro:bit Module and HARDWARIO TOWER - Industrial IoT Kit, please visit the documentation where you can get a **[detailed tutorial](https://developers.hardwario.com/projects/microbit-module-tutorial)**
+If you want to see how to begin with the micro:bit Module and HARDWARIO TOWER - Industrial IoT Kit, please visit the documentation where you can get a **[DETAILED TUTORIAL](https://developers.hardwario.com/projects/microbit-module-tutorial)**
 
 ## Simple Thermostat
 
