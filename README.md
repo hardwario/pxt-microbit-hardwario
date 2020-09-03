@@ -13,28 +13,59 @@
 This document describes the concept of the micro:bit integration into the HARDWARIO IoT Kit (further referred to just as "IoT Kit"). The IoT Kit offers a huge variety of pluggable modules that can be easily used not for educational purposes, but also for industrial applications and have been battle-tested in a number of pilot projects.
 
 # Examples
-Code example for making a simple Thermostat with micro:bit showing an icon on LED matrix and HARDWARIO modules measuring the temperature and providing a Relay impulse
+
+If you want to see how to begin with the micro:bit Module and HARDWARIO TOWER - Industrial IoT Kit, please visit the documentation where you can get a **[detailed tutorial](https://developers.hardwario.com/projects/microbit-module-tutorial)**
+
+## Simple Thermostat
+
+Code example for making a simple Thermostat with micro:bit showing an icon on LED matrix and HARDWARIO modules measuring the temperature and providing a Relay impulse.
+
+**Requirements**
+
+- micro:bit Module
+- Temperature Tag
+- Relay Module
+
 ```blocks
+let temperature_threshold = 0
 input.onButtonPressed(Button.A, function () {
-    Temp = Temp + 1
-    basic.showNumber(Temp)
+    temperature_threshold += 1
 })
 input.onButtonPressed(Button.B, function () {
-    Temp = Temp - 1
-    basic.showNumber(Temp)
+    temperature_threshold += -1
 })
-let Temp = 0
-Temp = 40
 basic.forever(function () {
-    if (hardwario.temperature() <= Temp) {
-        hardwario.setRelay(RelayState.On)
+    if (hardwario.temperature() < temperature_threshold) {
+        hardwario.setPowerModuleRelay(RelayState.On)
         basic.showIcon(IconNames.Yes)
-    } else {
-        hardwario.setRelay(RelayState.Off)
+    }
+    if (hardwario.temperature() > temperature_threshold + 2) {
+        hardwario.setPowerModuleRelay(RelayState.Off)
         basic.showIcon(IconNames.No)
     }
     basic.pause(2000)
 })
+```
+
+## Intruder Alarm
+
+With this example you will be able to place your alarm inside your drawer to guard all your stuff
+
+**Requirements**
+
+- micro:bit Module
+- PIR Module
+- *Audio Output(optional)*
+
+```blocks
+hardwario.onMovement(function () {
+    basic.showIcon(IconNames.Angry)
+    for (let index = 0; index < 4; index++) {
+        music.playMelody("C - C - C - C - ", 150)
+    }
+})
+hardwario.motionDetectorTask(
+)
 ```
 
 ## System Concept
