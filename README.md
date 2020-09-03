@@ -12,6 +12,31 @@
  
 This document describes the concept of the micro:bit integration into the HARDWARIO IoT Kit (further referred to just as "IoT Kit"). The IoT Kit offers a huge variety of pluggable modules that can be easily used not for educational purposes, but also for industrial applications and have been battle-tested in a number of pilot projects.
 
+# Examples
+Code example for making a simple Thermostat with micro:bit showing an icon on LED matrix and HARDWARIO modules measuring the temperature and providing a Relay impulse
+```blocks
+input.onButtonPressed(Button.A, function () {
+    Temp = Temp + 1
+    basic.showNumber(Temp)
+})
+input.onButtonPressed(Button.B, function () {
+    Temp = Temp - 1
+    basic.showNumber(Temp)
+})
+let Temp = 0
+Temp = 40
+basic.forever(function () {
+    if (hardwario.temperature() <= Temp) {
+        hardwario.setRelay(RelayState.On)
+        basic.showIcon(IconNames.Yes)
+    } else {
+        hardwario.setRelay(RelayState.Off)
+        basic.showIcon(IconNames.No)
+    }
+    basic.pause(2000)
+})
+```
+
 ## System Concept
 The IoT Kit uses Core Module as its main control element. It has its own MCU and radio to exchange data with a wireless gateway. Contrary to that, the micro:bit could replace its role and IoT Kit would represent an accessory extension to the micro:bit mainboard.
 
@@ -69,31 +94,6 @@ The Microbit Module will be designed first. Based on the sample, HARDWARIO will 
 
 On the firmware side, the initial integration will be done for the CO2 Module, Humidity Tag, Barometer Tag, Lux Meter Tag, and LCD Module. On this kit, the basics of the air quality monitoring can be explained with the possibility to alert excessive values on the micro:bit LED matrix.
 
-
-# Examples
-Code example for making a simple Thermostat with micro:bit showing an icon on LED matrix and HARDWARIO modules measuring the temperature and providing a Relay impulse
-```blocks
-input.onButtonPressed(Button.A, function () {
-    Temp = Temp + 1
-    basic.showNumber(Temp)
-})
-input.onButtonPressed(Button.B, function () {
-    Temp = Temp - 1
-    basic.showNumber(Temp)
-})
-let Temp = 0
-Temp = 40
-basic.forever(function () {
-    if (hardwario.temperature() <= Temp) {
-        hardwario.setRelay(RelayState.On)
-        basic.showIcon(IconNames.Yes)
-    } else {
-        hardwario.setRelay(RelayState.Off)
-        basic.showIcon(IconNames.No)
-    }
-    basic.pause(2000)
-})
-```
 
 # Reference
 ---
