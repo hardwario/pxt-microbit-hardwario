@@ -69,7 +69,7 @@ hardwario.motionDetectorTask(
 ```
 
 # Reference
----
+
 ## co2 #hardwario-co2
 Starts periodic measurement on [HARDWARIO CO2 Module](https://shop.hardwario.com/co2-module/) and returns the value of CO2 in the air. The first initialization takes around 1 minute then it measures every 3 seconds by default, you can change the time with the special block.
 ```sig
@@ -145,12 +145,13 @@ Starts measurement on [HARDWARIO Infragrid Module](https://shop.hardwario.com/in
 hardwario.infragrid()
 ```
 
-# configure PIR module # hardwario-motionDetectorTask
+## configure PIR module # hardwario-motionDetectorTask
 This block starts motion detection on the [HARDWARIO PIR Module](https://shop.hardwario.com/pir-module/), you can also set some advanced configuration by pressing the plus on the block if you want to.
 ```sig
 hardwario.motionDetectorTask()
 ```
-# on movement # hardwario-onMovement
+
+## on movement # hardwario-onMovement
 You can put more blocks into this one and it will fire every time the movement is detected on the PIR Module. YOU HAVE TO RUN A CONFIGURE PIR MODULE BLOCK FOR THIS ONE TO WORK!
 ```sig
 hardwario.onMovement(function () {
