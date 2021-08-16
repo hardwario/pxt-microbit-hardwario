@@ -248,10 +248,10 @@ namespace infragridModule {
             {
                 temperature = temporary_data * 0.25;
             }
-            serial.writeString(temperature + " ");
+            /*serial.writeString(temperature + " ");
             if (i % 8 == 0) {
                 serial.writeLine("");
-            }
+            }*/
         }
         for(let i = 0; i < 8; i++) {
             for(let j = 0; j < 8; j++) {
@@ -291,7 +291,6 @@ namespace infragridModule {
 
         control.inBackground(function () {
             while (true) {
-                serial.writeLine("START");
                 /*helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_INFRAGRID_TCA9534, 7, 1);
                 basic.pause(50);
 
@@ -340,7 +339,6 @@ namespace lcdModule {
             framebuffer[i] = 0;
         }
 
-        serial.writeLine("INITIALIZE");
         let vcom: number = 0;
 
         helperFunctions.tca9534aInit(I2C_ADDRESS_MODULE_LCD_TCA9534);
@@ -352,10 +350,8 @@ namespace lcdModule {
         let line: number;
         let offs: number;
         for (line = 1, offs = 1; line <= 2; line++ , offs += 18) {
-            serial.writeLine("CYCLE LCD");
             framebuffer[offs] = bcLs013b7dh03Reverse(line);
         }
-        serial.writeNumbers(framebuffer);
 
         //CS pin set
         helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 1);
@@ -365,7 +361,6 @@ namespace lcdModule {
         helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 0);
         pins.spiTransfer(Buffer.fromArray([0x20, 0x00]), null);
         helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 1);
-        serial.writeLine("CLEAR");
 
         for(let i = 0; i < 20; i++) {
             lcdDrawPixel(i, 1, 0);
@@ -373,7 +368,6 @@ namespace lcdModule {
 
         framebuffer[0] = 0x80 | 0x40;
 
-        serial.writeNumbers(framebuffer);
 
         helperFunctions.tca9534aWritePin(I2C_ADDRESS_MODULE_LCD_TCA9534, 7, 0);
 
@@ -663,7 +657,6 @@ class BarometerTag extends Sensor {
             this.value = pascal;
 
             basic.pause(20);
-
             //ALTITUDE
             i2c.writeBuffer(this.i2cAddress, [0x26, 0xb8]);
 
@@ -1428,7 +1421,6 @@ namespace hardwario {
 
     function measurementTask() {
         measurementTaskStarted = true;
-        
         control.inBackground(function () {
             while (true) {
                 if (temperatureTagInstance != null && temperatureTagInstance.initialized 
@@ -1461,9 +1453,7 @@ namespace hardwario {
                 }
                 if (barometerTagInstance != null && barometerTagInstance.initialized 
                 && helperFunctions.checkTimeFromLastMeasurement(barometerTagInstance)) {
-                    control.inBackground(function () {
-                        barometerTagInstance.measure();
-                    })
+                    barometerTagInstance.measure();
                 }
                 basic.pause(1);
             }
