@@ -1,6 +1,6 @@
 {
     "name": "pxt-microbit-hardwario",
-    "version": "0.0.7",
+    "version": "0.1.0",
     "description": "HARDWARIO IoT Kit drivers",
     "license": "MIT",
     "dependencies": {
