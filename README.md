@@ -10,7 +10,7 @@
  
 <img src="https://github.com/bigclownprojects/pxt-HARDWARIO/blob/master/src/img/microbit_main.png?raw=true" width="400" alt="micro:bit main" align="right"></a>
  
-This document describes the concept of the micro:bit integration into the HARDWARIO IoT Kit (further referred to just as "IoT Kit"). The IoT Kit offers a huge variety of pluggable modules that can be easily used not for educational purposes, but also for industrial applications and have been battle-tested in a number of pilot projects.
+This documet describes the concept of the micro:bit integration into the HARDWARIO IoT Kit (further referred to just as "IoT Kit"). The IoT Kit offers a huge variety of pluggable modules that can be easily used not for educational purposes, but also for industrial applications and have been battle-tested in a number of pilot projects.
 
 # Examples
 
