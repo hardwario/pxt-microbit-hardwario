@@ -117,7 +117,7 @@ hardwario.altitude()
 ```
 
 ## change measurement delay #hardwario-measurementDelay
-Change the measurement delay on selected sensor or on all of them to selected value in ms. There can be some delays between the measurements if you use multiple sensors but it will be mostly precise.
+Change the measurement delay on selected sena.s. on all of them to selected value in ms. There can be some delays between the measurements if you use multiple sensors but it will be mostly precise.
 ```sig
 hardwario.measurementDelay(MeasurementDelays.Light, 3000)
 ```
@@ -224,6 +224,6 @@ On the firmware side, the initial integration will be done for the CO2 Module, H
 
 ---
 
-Made with &#x2764;&nbsp; by [**HARDWARIO s.r.o.**](https://www.hardwario.com/) in the heart of Europe.
+Made with &#x2764;&nbsp; by [**HARDWARIO a.s.**](https://www.hardwario.com/) in the heart of Europe.
 
 <script src="https://makecode.com/gh-pages-embed.js"></script><script>makeCodeRender("{{ site.makecode.home_url }}", "{{ site.github.owner_name }}/{{ site.github.repository_name }}");</script>
